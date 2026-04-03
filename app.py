@@ -1,90 +1,124 @@
 import streamlit as st
 
-# Configuración de página con Look Profesional
-st.set_page_config(page_title="PREGÓN AI | Intelligence", layout="wide")
+# 1. Configuración de Pestaña
+st.set_page_config(page_title="PREGÓN AI | Netflix Edition", layout="wide")
 
-# CSS Avanzado para Look "Black Edition" y Contraste Alto
+# 2. INYECCIÓN DE DISEÑO NETFLIX (Fuerza Modo Oscuro y Colores Reales)
 st.markdown("""
     <style>
-    /* Fondo total negro profundo */
-    .stApp { background-color: #050505; color: #FFFFFF; }
-    
-    /* Estilo de las tarjetas de métricas */
-    div[data-testid="stMetric"] {
-        background-color: #121212;
-        border: 1px solid #222222;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    /* Forzar fondo negro Netflix en toda la app */
+    .stApp, .main, .stSidebar, [data-testid="stHeader"] {
+        background-color: #000000 !important;
+        color: white !important;
     }
-    
-    /* Sidebar elegante */
-    section[data-testid="stSidebar"] { background-color: #000000; border-right: 1px solid #1f1f1f; }
-    
-    /* Botón de Pago estilo Premium */
-    .stButton>button {
-        background-color: #E50914; /* Rojo Netflix */
-        color: white;
-        border-radius: 8px;
-        width: 100%;
-        border: none;
+
+    /* Ocultar elementos innecesarios de Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+
+    /* El Rojo Netflix para Títulos y Botones */
+    h1, h2, h3 {
+        color: #E50914 !important;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
         font-weight: bold;
-        padding: 10px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
     }
-    
-    /* Mejorar visibilidad de tablas */
-    .stTable { background-color: #121212; border-radius: 10px; color: white !important; }
-    th { color: #E50914 !important; }
+
+    /* Estilo de Tarjetas de Leads (Tipo Posters de Películas) */
+    .lead-card {
+        background-color: #141414;
+        border-radius: 4px;
+        padding: 15px;
+        border-bottom: 3px solid #E50914;
+        transition: transform .2s;
+        margin-bottom: 20px;
+    }
+    .lead-card:hover {
+        transform: scale(1.05);
+        background-color: #1f1f1f;
+    }
+
+    /* Botón de Pago Estilo Netflix */
+    .stButton>button {
+        background-color: #E50914 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 4px !important;
+        font-weight: bold !important;
+        font-size: 1.2rem !important;
+        padding: 10px 20px !important;
+    }
+
+    /* Ajuste de Tablas para que no brillen en blanco */
+    .stTable, [data-testid="stTable"] {
+        background-color: #141414 !important;
+        color: white !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SIDEBAR ---
+# --- BARRA LATERAL (SIDEBAR) ---
 with st.sidebar:
-    st.markdown("<h1 style='color: #E50914;'>PREGÓN AI</h1>", unsafe_allow_html=True)
-    st.markdown("---")
-    menu = st.radio("Navegación", ["🔥 Leads del Día", "📡 Radar de Competencia", "💎 Plan Premium"])
-    st.markdown("---")
-    st.write("Versión: 1.0.2 (Alpha)")
+    st.markdown("<h1 style='font-size: 2.5rem;'>NETFLIX</h1>", unsafe_allow_html=True) # Logo texto estilo Netflix
+    st.markdown("<p style='color: #808080; font-weight: bold;'>PREGÓN AI EDITION</p>", unsafe_allow_html=True)
+    st.write("")
+    menu = st.radio("", ["🏠 Inicio", "🔍 Explorar Radar", "📺 Mis Suscripción"])
 
 # --- CONTENIDO PRINCIPAL ---
-if menu == "🔥 Leads del Día":
-    st.markdown("## 🚗 Dashboard de Inteligencia")
-    st.markdown("<p style='color: #888;'>Filtro de intención de compra detectado por IA en República Dominicana.</p>", unsafe_allow_html=True)
+if menu == "🏠 Inicio":
+    st.markdown("<h1>RECIÉN AGREGADOS</h1>", unsafe_allow_html=True)
+    st.write("### Leads calientes detectados hoy en RD")
     
-    # Métricas con mejor contraste
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Leads Identificados", "24", "+5")
-    c2.metric("Intención de Compra", "92%", "Alta")
-    c3.metric("Oportunidad de Venta", "RD$ 6.8M")
+    # Simulación de Fila de Netflix (3 columnas)
+    col1, col2, col3 = st.columns(3)
 
-    st.markdown("### 📋 Prospectos Calientes")
-    # Tabla simulada (después vendrá de Supabase)
-    leads = [
-        {"Canal": "IG", "Usuario": "@jose_luxury", "Interés": "Toyota Hilux", "Comentario": "¿Qué año y precio?", "Score": "🔥 98%"},
-        {"Canal": "IG", "Usuario": "@ana_vargas", "Interés": "Lexus LX", "Comentario": "Tengo el inicial", "Score": "🔥 95%"},
-        {"Canal": "IG", "Usuario": "@melo_autos", "Interés": "Honda CR-V", "Comentario": "¿Reciben carro?", "Score": "✅ 88%"}
-    ]
-    st.table(leads)
+    with col1:
+        st.markdown(f"""
+            <div class="lead-card">
+                <p style='color: #E50914; font-weight: bold;'>🔥 98% MATCH</p>
+                <h3>@juan_melo</h3>
+                <p><b>Vehículo:</b> Toyota Hilux 2023</p>
+                <p><i>"Dime el precio de esa grasa, k lo k"</i></p>
+            </div>
+        """, unsafe_allow_html=True)
 
-elif menu == "📡 Radar de Competencia":
-    st.title("📡 Radar en Tiempo Real")
-    st.write("Configura las cuentas que deseas espiar.")
-    st.text_input("Ingresa el @usuario (ej: @mikonosrd)")
-    if st.button("Activar Rastreo de Cuentas"):
-        st.success("Radar configurado. Empezaremos a buscar leads en esa cuenta.")
+    with col2:
+        st.markdown(f"""
+            <div class="lead-card">
+                <p style='color: #E50914; font-weight: bold;'>🔥 95% MATCH</p>
+                <h3>@ana_perez</h3>
+                <p><b>Vehículo:</b> Lexus LX600</p>
+                <p><i>"¿Dónde están ubicados? Quiero ir hoy."</i></p>
+            </div>
+        """, unsafe_allow_html=True)
 
-elif menu == "💎 Plan Premium":
-    st.markdown("## 💎 Sube de nivel tu Dealer")
-    st.write("Para ver leads ilimitados y recibir alertas por WhatsApp, activa tu plan.")
+    with col3:
+        st.markdown(f"""
+            <div class="lead-card">
+                <p style='color: #E50914; font-weight: bold;'>🔥 89% MATCH</p>
+                <h3>@tiguere_ventas</h3>
+                <p><b>Vehículo:</b> Honda Civic</p>
+                <p><i>"¿Reciben vehículo y cuánto es el inicial?"</i></p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<h1>TENDENCIAS AHORA</h1>", unsafe_allow_html=True)
+    st.info("Radar activo espiando 52 dealers en Santo Domingo y Santiago.")
+
+elif menu == "🔍 Explorar Radar":
+    st.title("CONFIGURAR RADAR")
+    st.write("Añade cuentas de la competencia para empezar a extraer datos.")
+    cuenta = st.text_input("Usuario de Instagram (ej: @mikonosrd)")
+    if st.button("EMPEZAR A ESPIAR"):
+        st.success(f"Radar fijado en {cuenta}. Los datos aparecerán en 'Inicio' pronto.")
+
+elif menu == "📺 Mis Suscripción":
+    st.title("PLANES Y PAGOS")
+    st.write("Para ver los datos completos de los clientes y recibir alertas por WhatsApp:")
+    st.markdown("### PLAN PREMIUM: RD$ 5,000 / mes")
     
-    st.markdown("""
-    - **Radar Ilimitado:** Espía hasta 100 competidores.
-    - **IA Avanzada:** Filtrado de jerga dominicana (KLK, dime de eso, etc).
-    - **Alertas WhatsApp:** Notificación al segundo.
-    """)
-    
-    # AQUÍ ESTÁ TU BOTÓN DE COBRO
-    if st.button("Hablar con Soporte para Activar"):
-        st.write("Redirigiendo a WhatsApp del Ingeniero Lixander...")
-        # Enlace real a tu WhatsApp
-        st.markdown("[Haz clic aquí para pagar vía WhatsApp](https://wa.me/tu_numero_aqui?text=Hola,%20quiero%20activar%20mi%20plan%20Premium%20en%20Pregon%20AI)")
+    # BOTÓN DE PAGO
+    if st.button("DESBLOQUEAR AHORA"):
+        st.write("Conectando con el Ingeniero Lixander...")
+        st.markdown("[Pagar vía WhatsApp / Transferencia](https://wa.me/tu_numero?text=Hola,%20quiero%20activar%20mi%20plan%20Premium)")
