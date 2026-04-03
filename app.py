@@ -19,7 +19,7 @@ if 'user' not in st.session_state:
 
 def login_form():
     with st.sidebar:
-        st.title("🔐 Acceso Dealer")
+        st.title("🔐 Acceder a Pregón AI")
         tab1, tab2 = st.tabs(["Ingresar", "Registrarse"])
         
         with tab1:
@@ -61,7 +61,7 @@ st.markdown("""
 if st.session_state.user is None:
     # SI NO HAY USUARIO: Pantalla de Bienvenida
     st.title("🚀 PREGÓN AI")
-    st.subheader("La red de inteligencia de datos automotriz más potente de RD.")
+    st.subheader("La red de inteligencia de datos más potente de RD.")
     st.info("Para acceder a tus leads y configurar tu radar, inicia sesión en el panel de la izquierda.")
     st.image("https://images.unsplash.com/photo-1551288049-bbbda536339a?auto=format&fit=crop&q=80&w=1000", caption="Análisis de mercado en tiempo real")
     login_form()
