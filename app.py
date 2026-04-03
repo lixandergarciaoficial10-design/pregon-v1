@@ -100,11 +100,42 @@ else:
             st.error(f"Error cargando datos: {e}")
 
     elif menu == "Radar":
-        st.title("📡 Configuración del Radar")
+        st.title("📡 Configuración del Radar Personal")
         st.write("Define qué cuentas de Instagram quieres que la IA analice por ti.")
-        st.text_input("Instagram del Dealer Competencia", placeholder="@dealer_ejemplo")
-        if st.button("Añadir a Monitoreo"):
-            st.success("Cuenta añadida. El bot empezará el rastreo en la próxima ronda.")
+        
+        # Formulario para añadir nueva cuenta
+        with st.form("nuevo_radar"):
+            target_ig = st.text_input("Instagram del Dealer Competencia", placeholder="@dealer_ejemplo")
+            submit = st.form_submit_button("Añadir a Monitoreo")
+            
+            if submit and target_ig:
+                if not target_ig.startswith("@"):
+                    st.warning("Recuerda incluir el @ al principio.")
+                else:
+                    try:
+                        # Guardamos en la nueva tabla vinculando al ID del usuario actual
+                        data_insert = {
+                            "owner_id": st.session_state.user.id,
+                            "cuenta_instagram": target_ig,
+                            "esta_activo": True
+                        }
+                        supabase.table("radar_config").insert(data_insert).execute()
+                        st.success(f"¡Objetivo fijado! {target_ig} ahora está bajo vigilancia.")
+                    except Exception as e:
+                        st.error(f"Error al guardar: {e}")
+
+        # Mostrar las cuentas que ya está rastreando este usuario
+        st.markdown("---")
+        st.subheader("🕵️ Cuentas bajo vigilancia actual")
+        try:
+            mis_objetivos = supabase.table("radar_config").select("*").eq("owner_id", st.session_state.user.id).execute()
+            if mis_objetivos.data:
+                df_radar = pd.DataFrame(mis_objetivos.data)
+                st.table(df_radar[["cuenta_instagram", "esta_activo"]])
+            else:
+                st.info("Aún no tienes cuentas en monitoreo. Añade la primera arriba.")
+        except:
+            pass
 
     elif menu == "Pagos":
         st.title("💳 Activación de Servicio")
