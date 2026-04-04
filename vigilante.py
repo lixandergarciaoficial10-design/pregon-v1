@@ -2,8 +2,8 @@ import requests
 import streamlit as st
 from ia_engine import analizar_lead
 
-# Esta es tu llave única de RapidAPI que vimos en las capturas
-RAPIDAPI_KEY = st.secrets["RAPIDAPI_KEY"]
+# Esto intenta buscar la llave, si no la encuentra, deja el espacio vacío pero NO tumba la App
+RAPIDAPI_KEY = st.secrets.get("RAPIDAPI_KEY", "FALTA_LA_LLAVE")
 
 def espiar_instagram(username):
     """Busca los posts de un dealer en IG y saca sus leads."""
