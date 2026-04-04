@@ -30,8 +30,8 @@ def login_form():
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     st.session_state.user = res.user
                     st.rerun()
-                except:
-                    st.error("Credenciales incorrectas")
+                except Exception as e:
+            st.error(f"Error de acceso: {e}") # Esto nos dirá el mensaje real de Supabase
 
         with tab2:
             st.write("Crea tu cuenta")
