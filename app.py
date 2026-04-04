@@ -199,7 +199,7 @@ else:
                     total_leads = 0
                     for fila in mis_cuentas.data:
                         plataforma = fila['plataforma']
-                        user_target = fila['cuenta_objetivo']
+                        user_target = fila['cuenta_instagram']
                         
                         # El Vigilante hace su trabajo
                         if plataforma == "Instagram":
