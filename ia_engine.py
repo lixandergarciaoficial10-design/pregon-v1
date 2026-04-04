@@ -1,9 +1,11 @@
+import streamlit as st
 from groq import Groq
 import json
-import streamlit as st
 
-# Esto busca la llave que acabas de guardar en el cuadro de Secrets
+# Esto busca la llave que guardaste en los Secrets de Streamlit
 GROQ_KEY = st.secrets["GROQ_API_KEY"]
+
+client = Groq(api_key=GROQ_KEY)
 
 def analizar_lead(comentario):
     """
@@ -27,40 +29,7 @@ def analizar_lead(comentario):
             model="llama3-8b-8192",
             response_format={"type": "json_object"}
         )
+        # Convertimos la respuesta de texto a un diccionario de Python
         return json.loads(response.choices[0].message.content)
     except Exception as e:
-        print(f"Error en IA: {e}")
-        return {"score_ia": 0, "vehiculo_interes": "Error"}
-
-        # --- AGREGA ESTO AL FINAL DE TU MENÚ DE NAVEGACIÓN ---
-        elif menu == "Laboratorio IA":
-            st.title("🧠 Probador de Cerebro (Groq)")
-            st.info("Escribe un comentario para ver cómo la IA lo analiza en tiempo real.")
-            
-            from ia_engine import analizar_lead # Importamos tu archivo nuevo
-            
-            test_input = st.text_input("Escribe un comentario de prueba (ej: 'Me interesa la Hilux'):")
-            
-            if st.button("Analizar con Llama 3"):
-                if test_input:
-                    with st.spinner("Pensando..."):
-                        resultado = analizar_lead(test_input)
-                        st.json(resultado) # Muestra el JSON que genera la IA
-                        
-                        # Prueba visual de cómo se vería la card
-                        st.divider()
-                        st.subheader("Vista previa de la Card:")
-                        st.markdown(f"""
-                        <div class="card">
-                            <h3>👤 @usuario_prueba</h3>
-                            <p>🚗 <b>Vehículo:</b> {resultado.get('vehiculo_interes')}</p>
-                            <p>🔥 <b>Score:</b> {int(resultado.get('score_ia', 0)*100)}%</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                else:
-                    st.warning("Escribe algo primero, Lixander.")
-
-# --- PRUEBA DE FUEGO ---
-if __name__ == "__main__":
-    resultado = analizar_lead("Dime el precio de esa Hilux 2022 que publicaste hoy")
-    print(resultado)
+        return {"score_ia": 0, "vehiculo_interes": f"Error: {e}"}
