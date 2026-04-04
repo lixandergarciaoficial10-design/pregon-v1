@@ -1,10 +1,9 @@
 from groq import Groq
 import json
+import streamlit as st
 
-# PEGA TU LLAVE AQUÍ
-GROQ_KEY = "TU_LLAVE_DE_GROQ_AQUI"
-
-client = Groq(api_key=GROQ_KEY)
+# Esto busca la llave que acabas de guardar en el cuadro de Secrets
+GROQ_KEY = st.secrets["GROQ_API_KEY"]
 
 def analizar_lead(comentario):
     """
