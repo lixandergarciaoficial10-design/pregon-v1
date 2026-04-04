@@ -124,7 +124,6 @@ else:
         st.sidebar.title("🚀 PREGÓN AI")
         st.sidebar.write(f"🏢 **{profile.get('business_name')}**")
         
-        # MENÚ CON LA NUEVA OPCIÓN
         menu = st.sidebar.selectbox("Menú", ["Dashboard", "Radar", "Laboratorio IA", "Suscripción"])
 
         if st.sidebar.button("Cerrar sesión"):
@@ -139,7 +138,7 @@ else:
             
             col_m1, col_m2 = st.columns(2)
             col_m1.metric("Leads Totales", len(data))
-            col_m2.metric("Plan Actual", profile.get("plan").upper())
+            col_m2.metric("Plan Actual", profile.get("plan", "N/A").upper())
 
             if data:
                 for lead in data:
@@ -163,7 +162,6 @@ else:
             st.title("📡 Radar de Competencia (Automático)")
             st.info("Aquí monitoreamos las cuentas de los dealers que tú elijas.")
             
-            # 1. EL FORMULARIO PARA AGREGAR CUENTAS
             with st.expander("➕ Agregar Cuenta al Radar"):
                 col1, col2 = st.columns([1, 2])
                 with col1:
@@ -173,12 +171,11 @@ else:
                 
                 if st.button("Guardar en Radar"):
                     if cuenta_id:
-                        # Este código ahora coincide exactamente con tu tabla de la foto
                         supabase.table("radar_config").insert({
                             "owner_id": user_id,
-                            "cuenta_instagram": cuenta_id.replace("@", ""), # Quitamos el @ para que la API no se confunda
+                            "cuenta_instagram": cuenta_id.replace("@", ""),
                             "esta_activo": True,
-                            "plataforma": red_social # Asegúrate de que en Supabase ya sea tipo 'text'
+                            "plataform": red_social # Coincide con tu columna 'plataform'
                         }).execute()
                         st.success(f"Vigilando a {cuenta_id} en {red_social}")
                     else:
@@ -186,95 +183,79 @@ else:
 
             st.divider()
 
-            # 2. EL BOTÓN MÁGICO DE SINCRONIZACIÓN
             st.subheader("🔄 Sincronización en Tiempo Real")
             if st.button("🚀 ESCANEAR TODAS LAS CUENTAS AHORA"):
                 with st.spinner("El Vigilante está barriendo las redes... Limpiando leads..."):
-                    # LLAMAMOS AL VIGILANTE
                     from vigilante import espiar_instagram, espiar_tiktok, limpiar_y_calificar
                     
-                    # Buscamos qué cuentas tiene este cliente en su Radar
                     mis_cuentas = supabase.table("radar_config").select("*").eq("owner_id", user_id).execute()
                     
                     total_leads = 0
-                    for fila in mis_cuentas.data:
-                        plataforma = fila['plataforma']
-                        user_target = fila['cuenta_instagram']
-                        
-                        # El Vigilante hace su trabajo
-                        if plataforma == "Instagram":
-                            datos = espiar_instagram(user_target)
-                        else:
-                            datos = espiar_tiktok(user_target)
-                        
-                        # Supongamos que 'datos' trae los comentarios (ajustado a tus APIs)
-                        leads_encontrados = limpiar_y_calificar(datos, plataforma)
-                        
-                        # GUARDAR SOLO LOS LEADS LIMPIOS EN SUPABASE
-                        for lead in leads_encontrados:
-                            supabase.table("leads").insert({
-                                "owner_id": user_id,
-                                "usuario_ig": lead['usuario_ig'],
-                                "comentario": lead['comentario'],
-                                "score_ia": lead['score_ia'],
-                                "vehiculo_interes": lead['vehiculo_interes'],
-                                "fuente": lead['fuente']
-                            }).execute()
-                            total_leads += 1
+                    if mis_cuentas.data:
+                        for fila in mis_cuentas.data:
+                            plataforma = fila.get('plataform', 'Instagram')
+                            user_target = fila.get('cuenta_instagram', '')
+                            
+                            if not user_target: continue
+
+                            if plataforma == "Instagram":
+                                datos = espiar_instagram(user_target)
+                            else:
+                                datos = espiar_tiktok(user_target)
+                            
+                            # AQUÍ ESTÁ EL AJUSTE DE VOLUMEN (0.4)
+                            leads_encontrados = limpiar_y_calificar(datos, plataforma)
+                            
+                            for lead in leads_encontrados:
+                                # FILTRO DE VOLUMEN: Dejamos pasar todo lo que tenga 0.4 o más
+                                if lead.get('score_ia', 0) >= 0.4:
+                                    supabase.table("leads").insert({
+                                        "owner_id": user_id,
+                                        "usuario_ig": lead['usuario_ig'],
+                                        "comentario": lead['comentario'],
+                                        "score_ia": lead['score_ia'],
+                                        "vehiculo_interes": lead['vehiculo_interes'],
+                                        "fuente": lead['fuente']
+                                    }).execute()
+                                    total_leads += 1
                     
                     if total_leads > 0:
-                        st.success(f"¡Éxito! Encontramos {total_leads} leads calientes y limpios.")
+                        st.success(f"¡Éxito! Encontramos {total_leads} leads calientes.")
                         st.balloons()
                     else:
                         st.warning("Revisamos todo, pero no había comentarios con intención de compra hoy.")
 
-            # 3. MOSTRAR LAS CUENTAS QUE YA ESTÁN EN EL RADAR
             st.subheader("👀 Cuentas bajo vigilancia")
-            
-            # Traemos la data de tu tabla real
             mis_cuentas_view = supabase.table("radar_config").select("*").eq("owner_id", user_id).execute()
-            
             if mis_cuentas_view.data:
                 for c in mis_cuentas_view.data:
-                    # USAMOS LOS NOMBRES REALES DE TU TABLA:
-                    # Cambiamos 'plataforma' por 'plataform' (si así lo dejaste)
-                    # Cambiamos 'cuenta_objetivo' por 'cuenta_instagram'
                     plataforma_nombre = c.get('plataform', 'Red Desconocida')
                     cuenta_nombre = c.get('cuenta_instagram', 'Sin nombre')
-                    
                     st.write(f"✅ {plataforma_nombre}: **@{cuenta_nombre}**")
             else:
-                st.write("Aún no tienes cuentas en el Radar. Agrega la primera arriba.")
+                st.write("Aún no tienes cuentas en el Radar.")
 
         elif menu == "Laboratorio IA":
             st.title("🧠 Probador de Inteligencia (Groq)")
-            st.info("Escribe un comentario aquí para ver cómo la IA lo analiza antes de guardarlo.")
-            
-            # Importamos tu otro archivo
+            st.info("Prueba cómo la IA analiza la jerga dominicana.")
             try:
                 from ia_engine import analizar_lead
-                
                 test_input = st.text_input("Escribe un comentario de prueba:")
                 if st.button("Analizar ahora"):
                     if test_input:
-                        with st.spinner("Llama 3 analizando..."):
-                            resultado = analizar_lead(test_input)
-                            st.json(resultado)
-                            
-                            st.divider()
-                            st.subheader("Vista previa en el Dashboard:")
-                            st.markdown(f"""
-                            <div class="card">
-                                <h3>👤 @usuario_ejemplo</h3>
-                                <p>🚗 <b>Vehículo:</b> {resultado.get('vehiculo_interes')}</p>
-                                <p>🔥 <b>Score IA:</b> {int(resultado.get('score_ia', 0)*100)}%</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    else:
-                        st.warning("Escribe algo para analizar.")
+                        resultado = analizar_lead(test_input)
+                        st.json(resultado)
+                        st.divider()
+                        st.markdown(f"""
+                        <div class="card">
+                            <h3>👤 @usuario_test</h3>
+                            <p>🔥 <b>Score IA:</b> {int(resultado.get('score_ia', 0)*100)}%</p>
+                            <p>💬 {test_input}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
             except Exception as e:
-                st.error(f"Error al cargar el cerebro: {e}")
+                st.error(f"Error: {e}")
 
         elif menu == "Suscripción":
             st.title("💳 Mi suscripción")
-            st.success(f"Tu plan {profile.get('plan').upper()} está activo.")
+            st.success(f"Tu plan {profile.get('plan', 'NINGUNO').upper()} está activo.")
