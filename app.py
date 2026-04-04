@@ -150,7 +150,7 @@ else:
                     st.markdown(f"""
                     <div class="card">
                         <h3>👤 @{lead.get('usuario_ig', 'usuario')}</h3>
-                        <p>🚗 <b>Interés:</b> {lead.get('vehiculo_interes', 'N/A')}</p>
+                        <p>🛍️ <b>Interés:</b> {lead.get('producto_interes', lead.get('vehiculo_interes', 'N/A'))}</p>
                         <p>💬 {lead.get('comentario', 'Sin comentario')}</p>
                         <p>🔥 <b>Score IA:</b> {int(raw_score * 100)}%</p>
                     </div>
