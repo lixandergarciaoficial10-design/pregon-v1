@@ -26,7 +26,7 @@ def analizar_lead(comentario):
     try:
         response = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant",
             response_format={"type": "json_object"}
         )
         # Convertimos la respuesta de texto a un diccionario de Python
