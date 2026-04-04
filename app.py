@@ -140,14 +140,21 @@ else:
 
             if data:
                 for lead in data:
+                    # Nos aseguramos de que el score sea un número real (decimal)
+                    try:
+                        raw_score = float(lead.get('score_ia', 0))
+                    except:
+                        raw_score = 0.0
+                        
                     st.markdown(f"""
                     <div class="card">
-                        <h3>👤 @{lead.get('usuario_ig')}</h3>
-                        <p>🚗 <b>Interés:</b> {lead.get('vehiculo_interes')}</p>
-                        <p>💬 {lead.get('comentario')}</p>
-                        <p>🔥 <b>Score IA:</b> {int(lead.get('score_ia', 0)*100)}%</p>
+                        <h3>👤 @{lead.get('usuario_ig', 'usuario')}</h3>
+                        <p>🚗 <b>Interés:</b> {lead.get('vehiculo_interes', 'N/A')}</p>
+                        <p>💬 {lead.get('comentario', 'Sin comentario')}</p>
+                        <p>🔥 <b>Score IA:</b> {int(raw_score * 100)}%</p>
                     </div>
                     """, unsafe_allow_html=True)
+                    
             else:
                 st.info("Sin leads nuevos por ahora.")
 
