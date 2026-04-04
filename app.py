@@ -29,9 +29,7 @@ def login_form():
                 try:
                     res = supabase.auth.sign_in_with_password({"email": email, "password": password})
                     st.session_state.user = res.user
-                    st.rerun()
-
-                except Exception as e:
+                    st.rerun()       except Exception as e:
             st.error(f"Error de acceso: {e}") # Esto nos dirá el mensaje real de Supabase
 
         with tab2:
