@@ -226,22 +226,56 @@ else:
                     st.info("Buscando leads... Tu radar está trabajando 24/7.")
             except Exception as e:
                 st.error(f"Error al cargar datos: {e}")
+        # ==================================================================================
 
         elif menu == "Radar":
-            st.title("📡 Configuración del Radar")
-            st.write("Agrega las cuentas que quieres monitorear.")
-            with st.form("nuevo_radar"):
-                cuenta = st.text_input("Usuario de Instagram (ej: @dealer_rd)")
-                if st.form_submit_button("Activar Monitoreo"):
-                    if cuenta:
-                        supabase.table("radar_config").insert({
-                            "owner_id": user_id,
-                            "cuenta_instagram": cuenta,
-                            "esta_activo": True
-                        }).execute()
-                        st.success(f"Radar apuntado a {cuenta}")
-                    else:
-                        st.error("Escribe una cuenta válida.")
+    st.title("📡 Configuración del Radar")
+    
+    # 1. Definir límites según el plan
+    limites = {
+        "basico": 1,
+        "estandar": 5,
+        "pro": 15,
+        "ninguno": 0
+    }
+    
+    plan_usuario = profile.get("plan", "ninguno").lower()
+    limite_actual = limites.get(plan_usuario, 0)
+    
+    # 2. Contar cuántas cuentas ya tiene registradas
+    res_conteo = supabase.table("radar_config").select("id", count="exact").eq("owner_id", user_id).execute()
+    cuentas_actuales = res_conteo.count if res_conteo.count is not None else 0
+    
+    st.info(f"📊 Plan: **{plan_usuario.upper()}** | Cuentas: **{cuentas_actuales} / {limite_actual}**")
+
+    # 3. Lógica del candado
+    if cuentas_actuales >= limite_actual:
+        st.error("🚫 Has alcanzado el límite de cuentas de tu plan.")
+        st.warning("Sube de nivel para monitorear más competidores.")
+    else:
+        with st.form("nuevo_radar"):
+            cuenta = st.text_input("Usuario de Instagram (ej: @dealer_premium)")
+            if st.form_submit_button("Activar Monitoreo"):
+                if cuenta:
+                    # Limpiamos el @ si el usuario lo pone
+                    cuenta_limpia = cuenta.replace("@", "").strip()
+                    supabase.table("radar_config").insert({
+                        "owner_id": user_id,
+                        "cuenta_instagram": cuenta_limpia,
+                        "esta_activo": True
+                    }).execute()
+                    st.success(f"✅ Radar apuntado a @{cuenta_limpia}")
+                    st.rerun()
+                else:
+                    st.error("Escribe una cuenta válida.")
+
+    # 4. Mostrar lista de cuentas actuales para poder borrarlas si quieren
+    if cuentas_actuales > 0:
+        st.divider()
+        st.subheader("Tu Lista de Radar")
+        res_lista = supabase.table("radar_config").select("*").eq("owner_id", user_id).execute()
+        for r in res_lista.data:
+            st.write(f"📡 @{r['cuenta_instagram']}")
 
         elif menu == "Suscripción":
             st.title("💳 Mi Plan")
