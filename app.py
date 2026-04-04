@@ -175,7 +175,7 @@ else:
                             "owner_id": user_id,
                             "cuenta_instagram": cuenta_id.replace("@", ""),
                             "esta_activo": True,
-                            "plataform": red_social # Coincide con tu columna 'plataform'
+                            "plataforma": red_social # Coincide con tu columna 'plataforma'
                         }).execute()
                         st.success(f"Vigilando a {cuenta_id} en {red_social}")
                     else:
