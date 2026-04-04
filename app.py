@@ -230,10 +230,19 @@ else:
 
             # 3. MOSTRAR LAS CUENTAS QUE YA ESTÁN EN EL RADAR
             st.subheader("👀 Cuentas bajo vigilancia")
+            
+            # Traemos la data de tu tabla real
             mis_cuentas_view = supabase.table("radar_config").select("*").eq("owner_id", user_id).execute()
+            
             if mis_cuentas_view.data:
                 for c in mis_cuentas_view.data:
-                    st.write(f"✅ {c['plataforma']}: **@{c['cuenta_objetivo']}**")
+                    # USAMOS LOS NOMBRES REALES DE TU TABLA:
+                    # Cambiamos 'plataforma' por 'plataform' (si así lo dejaste)
+                    # Cambiamos 'cuenta_objetivo' por 'cuenta_instagram'
+                    plataforma_nombre = c.get('plataform', 'Red Desconocida')
+                    cuenta_nombre = c.get('cuenta_instagram', 'Sin nombre')
+                    
+                    st.write(f"✅ {plataforma_nombre}: **@{cuenta_nombre}**")
             else:
                 st.write("Aún no tienes cuentas en el Radar. Agrega la primera arriba.")
 
