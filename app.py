@@ -80,21 +80,50 @@ a {
 # =========================================
 def login_form():
     with st.sidebar:
-        st.title("🔐 Acceso")
+        st.title("🔐 Acceder a Pregón AI")
+        tab1, tab2 = st.tabs(["Ingresar", "Registrarse"])
+        
+        with tab1:
+            email = st.text_input("Correo", key="login_email")
+            password = st.text_input("Contraseña", type="password", key="login_pass")
+            if st.button("Entrar"):
+                try:
+                    res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+                    st.session_state.user = res.user
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error de acceso: {e}")
 
-        email = st.text_input("Correo")
-        password = st.text_input("Contraseña", type="password")
-
-        if st.button("Entrar"):
-            try:
-                res = supabase.auth.sign_in_with_password({
-                    "email": email,
-                    "password": password
-                })
-                st.session_state.user = res.user
-                st.rerun()
-            except:
-                st.error("Credenciales incorrectas")
+        with tab2:
+            st.subheader("Crea tu cuenta de Negocio")
+            new_email = st.text_input("Correo Electrónico", key="reg_email")
+            new_password = st.text_input("Contraseña", type="password", key="reg_pass")
+            
+            # --- NUEVOS CAMPOS PARA TU DATA ---
+            full_name = st.text_input("Tu Nombre Completo")
+            biz_name = st.text_input("Nombre del Negocio (Dealer, etc.)")
+            biz_type = st.selectbox("Tipo de Negocio", ["Dealer", "Inmobiliaria", "Tienda", "Otro"])
+            
+            if st.button("Crear Cuenta"):
+                try:
+                    # 1. Creamos el usuario en Auth
+                    res = supabase.auth.sign_up({"email": new_email, "password": new_password})
+                    
+                    if res.user:
+                        # 2. Guardamos sus datos en la tabla 'profiles' que acabas de crear
+                        user_id = res.user.id
+                        profile_data = {
+                            "id": user_id,
+                            "full_name": full_name,
+                            "business_name": biz_name,
+                            "business_type": biz_type,
+                            "plan": "ninguno",
+                            "status": "pendiente"
+                        }
+                        supabase.table("profiles").insert(profile_data).execute()
+                        st.success("¡Cuenta creada! Ahora inicia sesión para elegir tu plan.")
+                except Exception as e:
+                    st.error(f"Error en registro: {e}")
 
 # =========================================
 # APP PRINCIPAL
