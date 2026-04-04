@@ -173,11 +173,12 @@ else:
                 
                 if st.button("Guardar en Radar"):
                     if cuenta_id:
-                        # Guardamos la cuenta en Supabase para vigilarla siempre
+                        # Este código ahora coincide exactamente con tu tabla de la foto
                         supabase.table("radar_config").insert({
                             "owner_id": user_id,
-                            "plataforma": red_social,
-                            "cuenta_objetivo": cuenta_id.replace("@", "")
+                            "cuenta_instagram": cuenta_id.replace("@", ""), # Quitamos el @ para que la API no se confunda
+                            "esta_activo": True,
+                            "plataforma": red_social # Asegúrate de que en Supabase ya sea tipo 'text'
                         }).execute()
                         st.success(f"Vigilando a {cuenta_id} en {red_social}")
                     else:
