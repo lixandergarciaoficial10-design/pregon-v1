@@ -160,13 +160,81 @@ else:
                 st.info("Sin leads nuevos por ahora.")
 
         elif menu == "Radar":
-            st.title("📡 Configuración del Radar")
-            st.write("Agrega cuentas de Instagram para monitorear.")
-            with st.form("radar_f"):
-                c_ig = st.text_input("Usuario de Instagram")
-                if st.form_submit_button("Activar"):
-                    supabase.table("radar_config").insert({"owner_id": user_id, "cuenta_instagram": c_ig}).execute()
-                    st.success("Radar activo."); st.rerun()
+            st.title("📡 Radar de Competencia (Automático)")
+            st.info("Aquí monitoreamos las cuentas de los dealers que tú elijas.")
+            
+            # 1. EL FORMULARIO PARA AGREGAR CUENTAS
+            with st.expander("➕ Agregar Cuenta al Radar"):
+                col1, col2 = st.columns([1, 2])
+                with col1:
+                    red_social = st.selectbox("Plataforma", ["Instagram", "TikTok"])
+                with col2:
+                    cuenta_id = st.text_input("Nombre de Usuario (ej: @dealer_perez):")
+                
+                if st.button("Guardar en Radar"):
+                    if cuenta_id:
+                        # Guardamos la cuenta en Supabase para vigilarla siempre
+                        supabase.table("radar_config").insert({
+                            "owner_id": user_id,
+                            "plataforma": red_social,
+                            "cuenta_objetivo": cuenta_id.replace("@", "")
+                        }).execute()
+                        st.success(f"Vigilando a {cuenta_id} en {red_social}")
+                    else:
+                        st.error("Pon el nombre de la cuenta.")
+
+            st.divider()
+
+            # 2. EL BOTÓN MÁGICO DE SINCRONIZACIÓN
+            st.subheader("🔄 Sincronización en Tiempo Real")
+            if st.button("🚀 ESCANEAR TODAS LAS CUENTAS AHORA"):
+                with st.spinner("El Vigilante está barriendo las redes... Limpiando leads..."):
+                    # LLAMAMOS AL VIGILANTE
+                    from vigilante import espiar_instagram, espiar_tiktok, limpiar_y_calificar
+                    
+                    # Buscamos qué cuentas tiene este cliente en su Radar
+                    mis_cuentas = supabase.table("radar_config").select("*").eq("owner_id", user_id).execute()
+                    
+                    total_leads = 0
+                    for fila in mis_cuentas.data:
+                        plataforma = fila['plataforma']
+                        user_target = fila['cuenta_objetivo']
+                        
+                        # El Vigilante hace su trabajo
+                        if plataforma == "Instagram":
+                            datos = espiar_instagram(user_target)
+                        else:
+                            datos = espiar_tiktok(user_target)
+                        
+                        # Supongamos que 'datos' trae los comentarios (ajustado a tus APIs)
+                        leads_encontrados = limpiar_y_calificar(datos, plataforma)
+                        
+                        # GUARDAR SOLO LOS LEADS LIMPIOS EN SUPABASE
+                        for lead in leads_encontrados:
+                            supabase.table("leads").insert({
+                                "owner_id": user_id,
+                                "usuario_ig": lead['usuario_ig'],
+                                "comentario": lead['comentario'],
+                                "score_ia": lead['score_ia'],
+                                "vehiculo_interes": lead['vehiculo_interes'],
+                                "fuente": lead['fuente']
+                            }).execute()
+                            total_leads += 1
+                    
+                    if total_leads > 0:
+                        st.success(f"¡Éxito! Encontramos {total_leads} leads calientes y limpios.")
+                        st.balloons()
+                    else:
+                        st.warning("Revisamos todo, pero no había comentarios con intención de compra hoy.")
+
+            # 3. MOSTRAR LAS CUENTAS QUE YA ESTÁN EN EL RADAR
+            st.subheader("👀 Cuentas bajo vigilancia")
+            mis_cuentas_view = supabase.table("radar_config").select("*").eq("owner_id", user_id).execute()
+            if mis_cuentas_view.data:
+                for c in mis_cuentas_view.data:
+                    st.write(f"✅ {c['plataforma']}: **@{c['cuenta_objetivo']}**")
+            else:
+                st.write("Aún no tienes cuentas en el Radar. Agrega la primera arriba.")
 
         elif menu == "Laboratorio IA":
             st.title("🧠 Probador de Inteligencia (Groq)")
