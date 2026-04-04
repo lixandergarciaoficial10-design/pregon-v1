@@ -214,14 +214,15 @@ else:
                 st.divider()
 
                 if data:
-                    for lead in data:
-                        st.markdown(f"""
-                        <div class="card">
-                            <h3>👤 @{lead.get('username','usuario')}</h3>
-                            <p>💬 {lead.get('comment_text','Sin comentario')}</p>
-                            <p>🔥 Intención: {round(lead.get('intent_score',0)*100)}%</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+ for lead in data:
+    st.markdown(f"""
+    <div class="card">
+        <h3>👤 @{lead.get('usuario_ig','usuario')}</h3>
+        <p>🚗 Vehículo: {lead.get('vehiculo_interes','N/A')}</p>
+        <p>💬 {lead.get('comentario','Sin comentario')}</p>
+        <p>🔥 Intención: {round(lead.get('score_ia', 0) * 100)}%</p>
+    </div>
+    """, unsafe_allow_html=True)
                 else:
                     st.info("Buscando leads... Tu radar está trabajando 24/7.")
             except Exception as e:
