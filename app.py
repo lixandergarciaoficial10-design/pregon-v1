@@ -108,7 +108,6 @@ else:
             st.markdown('<div class="card"><h3>Básico</h3><p>RD$ 500</p></div>', unsafe_allow_html=True)
             if st.button("Elegir Básico"):
                 supabase.table("profiles").update({"plan": "basico"}).eq("id", user_id).execute()
-                st.success("Plan solicitado.")
         with c2:
             st.markdown('<div class="card"><h3>Pro</h3><p>RD$ 1,500</p></div>', unsafe_allow_html=True)
             if st.button("Elegir Pro"):
@@ -124,10 +123,14 @@ else:
     elif profile and profile.get("status") == "activo":
         st.sidebar.title("🚀 PREGÓN AI")
         st.sidebar.write(f"🏢 **{profile.get('business_name')}**")
-        menu = st.sidebar.selectbox("Menú", ["Dashboard", "Radar", "Suscripción"])
+        
+        # MENÚ CON LA NUEVA OPCIÓN
+        menu = st.sidebar.selectbox("Menú", ["Dashboard", "Radar", "Laboratorio IA", "Suscripción"])
 
         if st.sidebar.button("Cerrar sesión"):
-            supabase.auth.sign_out(); st.session_state.user = None; st.rerun()
+            supabase.auth.sign_out()
+            st.session_state.user = None
+            st.rerun()
 
         if menu == "Dashboard":
             st.title("📊 Panel de Leads")
@@ -140,7 +143,6 @@ else:
 
             if data:
                 for lead in data:
-                    # Nos aseguramos de que el score sea un número real (decimal)
                     try:
                         raw_score = float(lead.get('score_ia', 0))
                     except:
@@ -154,19 +156,46 @@ else:
                         <p>🔥 <b>Score IA:</b> {int(raw_score * 100)}%</p>
                     </div>
                     """, unsafe_allow_html=True)
-                    
             else:
                 st.info("Sin leads nuevos por ahora.")
 
         elif menu == "Radar":
             st.title("📡 Configuración del Radar")
-            # ... Lógica de radar igual a la anterior pero limpia ...
             st.write("Agrega cuentas de Instagram para monitorear.")
             with st.form("radar_f"):
                 c_ig = st.text_input("Usuario de Instagram")
                 if st.form_submit_button("Activar"):
                     supabase.table("radar_config").insert({"owner_id": user_id, "cuenta_instagram": c_ig}).execute()
                     st.success("Radar activo."); st.rerun()
+
+        elif menu == "Laboratorio IA":
+            st.title("🧠 Probador de Inteligencia (Groq)")
+            st.info("Escribe un comentario aquí para ver cómo la IA lo analiza antes de guardarlo.")
+            
+            # Importamos tu otro archivo
+            try:
+                from ia_engine import analizar_lead
+                
+                test_input = st.text_input("Escribe un comentario de prueba:")
+                if st.button("Analizar ahora"):
+                    if test_input:
+                        with st.spinner("Llama 3 analizando..."):
+                            resultado = analizar_lead(test_input)
+                            st.json(resultado)
+                            
+                            st.divider()
+                            st.subheader("Vista previa en el Dashboard:")
+                            st.markdown(f"""
+                            <div class="card">
+                                <h3>👤 @usuario_ejemplo</h3>
+                                <p>🚗 <b>Vehículo:</b> {resultado.get('vehiculo_interes')}</p>
+                                <p>🔥 <b>Score IA:</b> {int(resultado.get('score_ia', 0)*100)}%</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else:
+                        st.warning("Escribe algo para analizar.")
+            except Exception as e:
+                st.error(f"Error al cargar el cerebro: {e}")
 
         elif menu == "Suscripción":
             st.title("💳 Mi suscripción")
