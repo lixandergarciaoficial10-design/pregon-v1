@@ -102,7 +102,7 @@ def login_form():
             # --- NUEVOS CAMPOS PARA TU DATA ---
             full_name = st.text_input("Tu Nombre Completo")
             biz_name = st.text_input("Nombre del Negocio (Dealer, etc.)")
-            biz_type = st.selectbox("Tipo de Negocio", ["Dealer", "Inmobiliaria", "Tienda", "Otro"])
+            biz_type = st.selectbox("Tipo de Negocio", ["Dealer", "Inmobiliaria", "Electromuebles", "Equipos tecnológicos", "Otro"])
             
             if st.button("Crear Cuenta"):
                 try:
