@@ -126,8 +126,9 @@ def login_form():
                     st.error(f"Error en registro: {e}")
 
 # =========================================
-# APP PRINCIPAL
+# 🚀 APP PRINCIPAL (CON MURO DE PAGO)
 # =========================================
+
 if st.session_state.user is None:
     st.title("🚀 PREGÓN AI")
     st.subheader("Sistema inteligente de captación de clientes")
@@ -135,114 +136,95 @@ if st.session_state.user is None:
     login_form()
 
 else:
-    st.sidebar.title("🚀 PREGÓN AI")
-    st.sidebar.write(f"👤 {st.session_state.user.email}")
+    # 1. BUSCAR EL PERFIL DEL USUARIO EN LA TABLA QUE CREASTE
+    try:
+        user_id = st.session_state.user.id
+        profile_res = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
+        profile = profile_res.data
+    except Exception:
+        profile = None
 
-    menu = st.sidebar.selectbox("Menú", ["Dashboard", "Radar", "Pagos"])
+    # 2. VERIFICAR SI EL USUARIO ESTÁ ACTIVO O PENDIENTE
+    if profile and profile.get("status") == "pendiente":
+        st.title(f"¡Bienvenido, {profile.get('full_name', 'Emprendedor')}! 👋")
+        st.warning("🔒 Tu cuenta está en espera de activación.")
+        
+        st.subheader("Elige un Plan para desbloquear tu Radar:")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown("""<div class="card"><h3>🛡️ BÁSICO</h3><p>RD$ 500 / mes</p><p>1 Cuenta propia</p></div>""", unsafe_allow_html=True)
+            st.button("Elegir Básico", key="p1")
+        with col2:
+            st.markdown("""<div class="card"><h3>🔥 PRO</h3><p>RD$ 1,500 / mes</p><p>5 Cuentas Competencia</p></div>""", unsafe_allow_html=True)
+            st.button("Elegir Pro", key="p2")
+        with col3:
+            st.markdown("""<div class="card"><h3>🦅 ELITE</h3><p>RD$ 3,500 / mes</p><p>Radar Ilimitado</p></div>""", unsafe_allow_html=True)
+            st.button("Elegir Elite", key="p3")
+            
+        st.divider()
+        st.info("Una vez elijas, envía el comprobante de pago para activar tu acceso inmediato.")
+        st.link_button("📲 Enviar Comprobante (WhatsApp)", "https://wa.me/tu_numero_aqui")
+        
+        if st.sidebar.button("Cerrar Sesión"):
+            supabase.auth.sign_out()
+            st.session_state.user = None
+            st.rerun()
 
-    if st.sidebar.button("Cerrar sesión"):
-        supabase.auth.sign_out()
-        st.session_state.user = None
-        st.rerun()
+    elif profile and profile.get("status") == "activo":
+        # =========================================
+        # DASHBOARD REAL (SOLO PARA ACTIVOS)
+        # =========================================
+        st.sidebar.title("🚀 PREGÓN AI")
+        st.sidebar.write(f"🏢 **{profile.get('business_name', 'Mi Negocio')}**")
+        st.sidebar.write(f"👤 {st.session_state.user.email}")
 
-    # =========================================
-    # DASHBOARD (AQUÍ ESTÁ EL FLOW DURO)
-    # =========================================
-    if menu == "Dashboard":
+        menu = st.sidebar.selectbox("Menú", ["Dashboard", "Radar", "Pagos"])
 
-        st.title("📊 Panel de Leads en Vivo")
+        if st.sidebar.button("Cerrar sesión"):
+            supabase.auth.sign_out()
+            st.session_state.user = None
+            st.rerun()
 
-        try:
-            res = supabase.from_("leads").select("*").eq(
-                "owner_id", st.session_state.user.id
-            ).execute()
+        if menu == "Dashboard":
+            st.title("📊 Panel de Leads en Vivo")
+            try:
+                res = supabase.from_("leads").select("*").eq("owner_id", user_id).execute()
+                data = res.data if res.data else []
+                
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Leads Detectados", len(data))
+                col2.metric("Plan", profile.get("plan", "Básico").upper())
+                col3.metric("Sistema", "Online")
+                st.divider()
 
-            data = res.data if res.data else []
+                if data:
+                    for lead in data:
+                        st.markdown(f"""
+                        <div class="card">
+                            <h3>👤 @{lead.get('username','usuario')}</h3>
+                            <p>💬 {lead.get('comment_text','Sin comentario')}</p>
+                            <p>🔥 Intención: {round(lead.get('intent_score',0)*100)}%</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.warning("Aún no hay leads detectados.")
+            except Exception as e:
+                st.error(f"Error cargando leads: {e}")
 
-            # ===============================
-            # MÉTRICAS
-            # ===============================
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Leads Detectados", len(data))
-            col2.metric("Estado", "Activo")
-            col3.metric("Sistema", "Online")
-
-            st.divider()
-
-            # ===============================
-            # LEADS VISUALES (LO IMPORTANTE)
-            # ===============================
-            if data:
-
-                for lead in data:
-
-                    st.markdown(f"""
-                    <div class="card">
-                        <h3>👤 @{lead.get('username','usuario')}</h3>
-                        <p>💬 {lead.get('comment_text','Sin comentario')}</p>
-                        <p>🔥 Intención: {round(lead.get('intent_score',0)*100)}%</p>
-                        <p>⏱ {lead.get('created_at','')}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    colA, colB = st.columns(2)
-
-                    # 👤 PERFIL
-                    if lead.get("profile_url"):
-                        colA.link_button("Ver Perfil", lead["profile_url"])
-
-                    # 📌 POST
-                    if lead.get("post_url"):
-                        colB.link_button("Ver Publicación", lead["post_url"])
-
-            else:
-                st.warning("Aún no hay leads. El sistema empezará a detectarlos pronto.")
-
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-    # =========================================
-    # RADAR
-    # =========================================
-    elif menu == "Radar":
-
-        st.title("📡 Activar Radar")
-
-        with st.form("radar"):
-            cuenta = st.text_input("Cuenta a monitorear (@dealer)")
-            submit = st.form_submit_button("Activar")
-
-            if submit:
-                try:
+        elif menu == "Radar":
+            st.title("📡 Configurar Radar")
+            with st.form("radar"):
+                cuenta = st.text_input("Cuenta de Instagram (@usuario)")
+                if st.form_submit_button("Activar"):
                     supabase.table("radar_config").insert({
-                        "owner_id": st.session_state.user.id,
+                        "owner_id": user_id,
                         "cuenta_instagram": cuenta,
                         "esta_activo": True
                     }).execute()
-
                     st.success(f"Radar activado para {cuenta}")
-                    st.info("El sistema comenzará a analizar comentarios automáticamente.")
 
-                except Exception as e:
-                    st.error(f"Error: {e}")
-
-    # =========================================
-    # PAGOS
-    # =========================================
-    elif menu == "Pagos":
-
-        st.title("💳 Activar Plan")
-
-        st.markdown("""
-        ### Plan Básico RD$2,000 / mes
-
-        ✔ Leads en tiempo real  
-        ✔ Acceso completo al sistema  
-        ✔ Soporte básico  
-
-        ---
-        """)
-
-        st.info("Para activar, contáctanos por WhatsApp.")
-
-        st.link_button("💬 Activar ahora", "https://wa.me/1809XXXXXXX")
+        elif menu == "Pagos":
+            st.title("💳 Mi Suscripción")
+            st.write(f"Tu plan actual es: **{profile.get('plan', 'Ninguno').upper()}**")
+            st.info("Para renovar o cambiar de plan, contáctanos.")
