@@ -126,7 +126,7 @@ def login_form():
                     st.error(f"Error en registro: {e}")
 
 # =========================================
-# 🚀 APP PRINCIPAL (CON MURO DE PAGO)
+# 🚀 APP PRINCIPAL (CON MURO DE PAGO Y LÓGICA DE ACTIVACIÓN)
 # =========================================
 
 if st.session_state.user is None:
@@ -136,35 +136,49 @@ if st.session_state.user is None:
     login_form()
 
 else:
-    # 1. BUSCAR EL PERFIL DEL USUARIO EN LA TABLA QUE CREASTE
+    # 1. BUSCAR EL PERFIL DEL USUARIO
     try:
         user_id = st.session_state.user.id
+        # Consultamos directamente a la tabla profiles
         profile_res = supabase.table("profiles").select("*").eq("id", user_id).single().execute()
         profile = profile_res.data
-    except Exception:
+    except Exception as e:
+        st.error(f"Error cargando perfil: {e}")
         profile = None
 
     # 2. VERIFICAR SI EL USUARIO ESTÁ ACTIVO O PENDIENTE
     if profile and profile.get("status") == "pendiente":
         st.title(f"¡Bienvenido, {profile.get('full_name', 'Emprendedor')}! 👋")
-        st.warning("🔒 Tu cuenta está en espera de activación.")
         
-        st.subheader("Elige un Plan para desbloquear tu Radar:")
+        # BOTÓN CRÍTICO: Para refrescar la sesión después de pagar o cambiar en Supabase
+        if st.button("🔄 YA PAGUÉ, ACTUALIZAR MI ACCESO"):
+            st.rerun()
+
+        st.warning("🔒 Tu cuenta está en espera de activación. Elige un plan y envía tu comprobante.")
         
         col1, col2, col3 = st.columns(3)
+        
         with col1:
-            st.markdown("""<div class="card"><h3>🛡️ BÁSICO</h3><p>RD$ 500 / mes</p><p>1 Cuenta propia</p></div>""", unsafe_allow_html=True)
-            st.button("Elegir Básico", key="p1")
+            st.markdown("""<div class="card"><h3>🛡️ BÁSICO</h3><p>RD$ 500 / mes</p></div>""", unsafe_allow_html=True)
+            if st.button("Elegir Básico", key="plan_basico"):
+                supabase.table("profiles").update({"plan": "basico"}).eq("id", user_id).execute()
+                st.success("Plan Básico seleccionado. Envía el comprobante por WhatsApp.")
+
         with col2:
-            st.markdown("""<div class="card"><h3>🔥 PRO</h3><p>RD$ 1,500 / mes</p><p>5 Cuentas Competencia</p></div>""", unsafe_allow_html=True)
-            st.button("Elegir Pro", key="p2")
+            st.markdown("""<div class="card"><h3>🔥 PRO</h3><p>RD$ 1,500 / mes</p></div>""", unsafe_allow_html=True)
+            if st.button("Elegir Pro", key="plan_pro"):
+                supabase.table("profiles").update({"plan": "pro"}).eq("id", user_id).execute()
+                st.success("Plan Pro seleccionado. Envía el comprobante por WhatsApp.")
+
         with col3:
-            st.markdown("""<div class="card"><h3>🦅 ELITE</h3><p>RD$ 3,500 / mes</p><p>Radar Ilimitado</p></div>""", unsafe_allow_html=True)
-            st.button("Elegir Elite", key="p3")
+            st.markdown("""<div class="card"><h3>🦅 ELITE</h3><p>RD$ 3,500 / mes</p></div>""", unsafe_allow_html=True)
+            if st.button("Elegir Elite", key="plan_elite"):
+                supabase.table("profiles").update({"plan": "elite"}).eq("id", user_id).execute()
+                st.success("Plan Elite seleccionado. Envía el comprobante por WhatsApp.")
             
         st.divider()
-        st.info("Una vez elijas, envía el comprobante de pago para activar tu acceso inmediato.")
-        st.link_button("📲 Enviar Comprobante (WhatsApp)", "https://wa.me/tu_numero_aqui")
+        st.info("Escríbenos para confirmar tu pago y activar tu radar hoy mismo.")
+        st.link_button("📲 Enviar Comprobante (WhatsApp)", "https://wa.me/1809XXXXXXX") # Pon tu número real aquí
         
         if st.sidebar.button("Cerrar Sesión"):
             supabase.auth.sign_out()
@@ -173,13 +187,13 @@ else:
 
     elif profile and profile.get("status") == "activo":
         # =========================================
-        # DASHBOARD REAL (SOLO PARA ACTIVOS)
+        # DASHBOARD REAL (ESTO SOLO SE VE SI STATUS == 'ACTIVO')
         # =========================================
         st.sidebar.title("🚀 PREGÓN AI")
         st.sidebar.write(f"🏢 **{profile.get('business_name', 'Mi Negocio')}**")
         st.sidebar.write(f"👤 {st.session_state.user.email}")
 
-        menu = st.sidebar.selectbox("Menú", ["Dashboard", "Radar", "Pagos"])
+        menu = st.sidebar.selectbox("Menú", ["Dashboard", "Radar", "Suscripción"])
 
         if st.sidebar.button("Cerrar sesión"):
             supabase.auth.sign_out()
@@ -189,13 +203,14 @@ else:
         if menu == "Dashboard":
             st.title("📊 Panel de Leads en Vivo")
             try:
-                res = supabase.from_("leads").select("*").eq("owner_id", user_id).execute()
-                data = res.data if res.data else []
+                # Filtrar leads que pertenezcan a este usuario
+                res_leads = supabase.table("leads").select("*").eq("owner_id", user_id).execute()
+                data = res_leads.data if res_leads.data else []
                 
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Leads Detectados", len(data))
-                col2.metric("Plan", profile.get("plan", "Básico").upper())
-                col3.metric("Sistema", "Online")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Leads", len(data))
+                c2.metric("Plan", profile.get("plan", "N/A").upper())
+                c3.metric("Estado", "ONLINE")
                 st.divider()
 
                 if data:
@@ -208,23 +223,28 @@ else:
                         </div>
                         """, unsafe_allow_html=True)
                 else:
-                    st.warning("Aún no hay leads detectados.")
+                    st.info("Buscando leads... Tu radar está trabajando 24/7.")
             except Exception as e:
-                st.error(f"Error cargando leads: {e}")
+                st.error(f"Error al cargar datos: {e}")
 
         elif menu == "Radar":
-            st.title("📡 Configurar Radar")
-            with st.form("radar"):
-                cuenta = st.text_input("Cuenta de Instagram (@usuario)")
-                if st.form_submit_button("Activar"):
-                    supabase.table("radar_config").insert({
-                        "owner_id": user_id,
-                        "cuenta_instagram": cuenta,
-                        "esta_activo": True
-                    }).execute()
-                    st.success(f"Radar activado para {cuenta}")
+            st.title("📡 Configuración del Radar")
+            st.write("Agrega las cuentas que quieres monitorear.")
+            with st.form("nuevo_radar"):
+                cuenta = st.text_input("Usuario de Instagram (ej: @dealer_rd)")
+                if st.form_submit_button("Activar Monitoreo"):
+                    if cuenta:
+                        supabase.table("radar_config").insert({
+                            "owner_id": user_id,
+                            "cuenta_instagram": cuenta,
+                            "esta_activo": True
+                        }).execute()
+                        st.success(f"Radar apuntado a {cuenta}")
+                    else:
+                        st.error("Escribe una cuenta válida.")
 
-        elif menu == "Pagos":
-            st.title("💳 Mi Suscripción")
-            st.write(f"Tu plan actual es: **{profile.get('plan', 'Ninguno').upper()}**")
-            st.info("Para renovar o cambiar de plan, contáctanos.")
+        elif menu == "Suscripción":
+            st.title("💳 Mi Plan")
+            st.success(f"Tu plan actual: **{profile.get('plan', 'Básico').upper()}**")
+            st.write("Estado: **ACTIVO** ✅")
+            st.info("Para mejorar tu plan o cancelar, contacta a soporte.")
