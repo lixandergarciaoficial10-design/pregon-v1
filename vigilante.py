@@ -1,74 +1,54 @@
 import streamlit as st
-from apify_client import ApifyClient
-
-# CONFIGURACIÓN DE CLIENTE
-try:
-    APIFY_TOKEN = st.secrets["APIFY_TOKEN"]
-    client = ApifyClient(APIFY_TOKEN)
-except:
-    client = None
+from instagrapi import Client
+import os
 
 def espiar_instagram(cuenta_target):
-    """
-    Versión 'Navegador Real': Obliga a Apify a cargar el JavaScript 
-    para que los comentarios no aparezcan vacíos.
-    """
-    if client is None: return []
-    usuario = cuenta_target.replace("@", "").strip()
+    cl = Client()
     
-    # INPUT PARA FORZAR CARGA DE DATOS REALES
-    run_input = {
-        "directUrls": [f"https://www.instagram.com/{usuario}/"],
-        "resultsLimit": 1, 
-        "resultsType": "details", # Entra al detalle del post
-        "searchLimit": 1,
-        "searchType": "hashtag",
-        "proxyConfiguration": { "useApifyProxy": True }, # USA PROXY RESIDENCIAL
-        "commentsLimit": 50
-    }
-
+    # Intentamos usar una sesión guardada para que no te bloqueen
+    # Debes poner tu usuario y clave de IG en los Secrets de Streamlit
+    IG_USER = st.secrets["IG_USER"]
+    IG_PASS = st.secrets["IG_PASS"]
+    
     try:
-        # Ejecutamos el actor
-        run = client.actor("apify/instagram-scraper").call(run_input=run_input)
+        # 1. Login automático en la nube
+        cl.login(IG_USER, IG_PASS)
+        
+        # 2. Buscamos al dealer
+        user_id = cl.user_id_from_username(cuenta_target.replace("@", ""))
+        
+        # 3. Traemos el último post
+        posts = cl.user_medias(user_id, 1)
+        if not posts:
+            return []
+            
+        media_id = posts[0].id
+        
+        # 4. Traemos los comentarios (esto es lo que vale dinero)
+        comments = cl.media_comments(media_id, 20)
         
         datos_crudos = []
-        items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
-
-        for item in items:
-            # Buscamos en todas las rutas posibles del JSON de Apify
-            comentarios = item.get("latestComments", [])
-            if not comentarios:
-                comentarios = item.get("comments", [])
-
-            for com in comentarios:
-                # Extraemos usuario y texto
-                user_ig = com.get("ownerUsername") or com.get("owner", {}).get("username")
-                texto_com = com.get("text")
-                
-                if user_ig and texto_com:
-                    datos_crudos.append({
-                        "usuario_ig": user_ig,
-                        "comentario": texto_com,
-                        "fuente": "Instagram",
-                        "vehiculo_interes": f"Post: {item.get('shortCode', 'Reciente')}"
-                    })
-        
+        for com in comments:
+            datos_crudos.append({
+                "usuario_ig": com.user.username,
+                "comentario": com.text,
+                "fuente": "Instagram Cloud",
+                "vehiculo_interes": "Post Reciente"
+            })
         return datos_crudos
+
     except Exception as e:
-        st.error(f"Error en la consulta: {e}")
+        st.error(f"Error de Conexión Instagram: {e}")
         return []
 
-def espiar_tiktok(t): 
-    return [] # Próxima fase
-
 def limpiar_y_calificar(datos, plataforma):
-    """
-    FILTRO DE PRUEBA: Deja pasar todo para confirmar que el 'tubo' 
-    de datos ya no está vacío.
-    """
     leads_finales = []
+    # Palabras de dinero en RD
+    palabras = ["precio", "cuanto", "info", "disponible", "donde", "ubicacion", "numero", "whatsapp", "interesa"]
+    
     for item in datos:
-        # Forzamos que aparezcan en el Dashboard
-        item['score_ia'] = 0.95 
-        leads_finales.append(item)
+        texto = item['comentario'].lower()
+        if any(p in texto for p in palabras):
+            item['score_ia'] = 0.95
+            leads_finales.append(item)
     return leads_finales
