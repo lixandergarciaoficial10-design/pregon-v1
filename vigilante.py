@@ -1,8 +1,9 @@
 import streamlit as st
 from apify_client import ApifyClient
 
-# CONFIGURACIÓN - PEGA TU TOKEN AQUÍ
-APIFY_TOKEN = "TU_APIFY_TOKEN_AQUÍ" 
+# AHORA EL CÓDIGO ES SEGURO
+# Streamlit busca el token automáticamente en la configuración secreta
+APIFY_TOKEN = st.secrets["APIFY_TOKEN"] 
 client = ApifyClient(APIFY_TOKEN)
 
 def espiar_instagram(cuenta_target):
