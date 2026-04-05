@@ -10,33 +10,37 @@ except Exception as e:
     client = None
 
 def espiar_instagram(cuenta_target):
-    """Llama al motor de Apify configurado para perfiles completos"""
+    """Versión Final: Usa la URL directa del perfil para evitar errores de validación"""
     if client is None:
         return []
 
-    # Limpiamos el nombre por si viene con @ o espacios
+    # Limpiamos el nombre y armamos la URL completa
     usuario = cuenta_target.replace("@", "").strip()
+    url_perfil = f"https://www.instagram.com/{usuario}/"
     
-    # NUEVA CONFIGURACIÓN: Buscamos por nombre de usuario, no por URL
+    # CONFIGURACIÓN QUE PIDE APIFY
     run_input = {
-        "usernames": [usuario],
-        "commentsLimit": 30, # Traer 30 comentarios en total
-        "resultsLimit": 5    # Revisar los últimos 5 posts del perfil
+        "directUrls": [url_perfil],
+        "resultsLimit": 20,      # Cuántos comentarios traer en total
+        "searchLimit": 1,        # Cuántos posts revisar (1 para probar rápido)
+        "searchType": "hashtag"  # Se deja así para que el scraper sepa que es una búsqueda
     }
 
     try:
-        # Ejecutamos el scraper de comentarios
-        run = client.actor("apify/instagram-comment-scraper").call(run_input=run_input)
+        # Volvemos al scraper general que es más flexible con las URLs de perfiles
+        run = client.actor("apify/instagram-scraper").call(run_input=run_input)
         
         datos_crudos = []
         for item in client.dataset(run["defaultDatasetId"]).iterate_items():
-            # Apify nos devuelve el texto y el dueño del comentario
-            datos_crudos.append({
-                "usuario_ig": item.get("ownerUsername"),
-                "comentario": item.get("text"),
-                "fuente": "Instagram (Apify)",
-                "vehiculo_interes": "Radar Pregon-v1"
-            })
+            # Extraemos los comentarios si el item los trae
+            comentarios = item.get("latestComments", [])
+            for com in comentarios:
+                datos_crudos.append({
+                    "usuario_ig": com.get("ownerUsername"),
+                    "comentario": com.get("text"),
+                    "fuente": "Instagram (Apify)",
+                    "vehiculo_interes": f"Post: {item.get('shortCode', 'N/A')}"
+                })
         return datos_crudos
     except Exception as e:
         st.error(f"Error en Apify: {e}")
@@ -45,19 +49,16 @@ def espiar_instagram(cuenta_target):
 def espiar_tiktok(t): return [] 
 
 def limpiar_y_calificar(datos, plataforma):
-    """Filtro de Intención de Compra"""
+    """IA de clasificación de Leads"""
     leads_finales = []
-    palabras_clave = ["precio", "cuanto", "info", "disponible", "donde", "ubicacion", "venden", "numero", "whatsapp", "interesa", "interesado"]
+    palabras_clave = ["precio", "cuanto", "info", "disponible", "donde", "ubicacion", "venden", "numero", "whatsapp", "interesa"]
     
     for item in datos:
         texto = str(item['comentario']).lower()
-        
-        # Si tiene palabra clave -> Score 0.95 (Caliente)
         if any(p in texto for p in palabras_clave):
             item['score_ia'] = 0.95
             leads_finales.append(item)
-        # Si es un comentario con sustancia (más de 15 letras) -> Score 0.45 (Tibio)
-        elif len(texto) > 15:
+        elif len(texto) > 10:
             item['score_ia'] = 0.45
             leads_finales.append(item)
             
