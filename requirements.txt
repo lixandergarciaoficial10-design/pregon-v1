@@ -3,3 +3,4 @@ streamlit
 pandas
 st-supabase-connection
 supabase
+instagrapi
