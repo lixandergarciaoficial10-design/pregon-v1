@@ -2,7 +2,6 @@ import streamlit as st
 from apify_client import ApifyClient
 
 # CONFIGURACIÓN SEGURA
-# Asegúrate de tener APIFY_TOKEN en los Secrets de Streamlit
 try:
     APIFY_TOKEN = st.secrets["APIFY_TOKEN"]
     client = ApifyClient(APIFY_TOKEN)
@@ -11,52 +10,53 @@ except Exception as e:
     client = None
 
 def espiar_instagram(cuenta_target):
-    """Llama al motor profesional de Apify para extraer comentarios"""
+    """Llama al motor de Apify configurado para perfiles completos"""
     if client is None:
         return []
 
-    cuenta_limpia = cuenta_target.replace("@", "").strip()
+    # Limpiamos el nombre por si viene con @ o espacios
+    usuario = cuenta_target.replace("@", "").strip()
     
-    # Configuración del robot especializado en comentarios
+    # NUEVA CONFIGURACIÓN: Buscamos por nombre de usuario, no por URL
     run_input = {
-        "directUrls": [f"https://www.instagram.com/{cuenta_limpia}/"],
-        "resultsLimit": 30, # Extraemos los últimos 30 para asegurar volumen
+        "usernames": [usuario],
+        "commentsLimit": 30, # Traer 30 comentarios en total
+        "resultsLimit": 5    # Revisar los últimos 5 posts del perfil
     }
 
     try:
-        # Usamos el actor especializado (más eficiente)
+        # Ejecutamos el scraper de comentarios
         run = client.actor("apify/instagram-comment-scraper").call(run_input=run_input)
         
         datos_crudos = []
         for item in client.dataset(run["defaultDatasetId"]).iterate_items():
+            # Apify nos devuelve el texto y el dueño del comentario
             datos_crudos.append({
                 "usuario_ig": item.get("ownerUsername"),
                 "comentario": item.get("text"),
                 "fuente": "Instagram (Apify)",
-                "vehiculo_interes": "Detectado en Radar"
+                "vehiculo_interes": "Radar Pregon-v1"
             })
         return datos_crudos
     except Exception as e:
         st.error(f"Error en Apify: {e}")
         return []
 
-def espiar_tiktok(t): 
-    return [] # Pendiente para la v2
+def espiar_tiktok(t): return [] 
 
 def limpiar_y_calificar(datos, plataforma):
-    """Filtro de Inteligencia para detectar intención de compra"""
+    """Filtro de Intención de Compra"""
     leads_finales = []
-    # Palabras que huelen a DINERO
-    palabras_clave = ["precio", "cuanto", "info", "disponible", "donde", "ubicacion", "venden", "numero", "whatsapp", "interesa"]
+    palabras_clave = ["precio", "cuanto", "info", "disponible", "donde", "ubicacion", "venden", "numero", "whatsapp", "interesa", "interesado"]
     
     for item in datos:
-        texto = item['comentario'].lower()
+        texto = str(item['comentario']).lower()
         
-        # Si el comentario tiene una palabra clave, le damos prioridad alta (0.95)
+        # Si tiene palabra clave -> Score 0.95 (Caliente)
         if any(p in texto for p in palabras_clave):
             item['score_ia'] = 0.95
             leads_finales.append(item)
-        # Si es un comentario genérico pero largo, lo dejamos como interés bajo
+        # Si es un comentario con sustancia (más de 15 letras) -> Score 0.45 (Tibio)
         elif len(texto) > 15:
             item['score_ia'] = 0.45
             leads_finales.append(item)
