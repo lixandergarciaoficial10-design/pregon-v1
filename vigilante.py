@@ -1,40 +1,46 @@
-import streamlit as st
 import instaloader
 import pandas as pd
 
-# Creamos el robot
+# Inicializamos el robot
 L = instaloader.Instaloader()
 
-def buscar_clientes_potenciales(cuenta_dealer):
-    datos_finales = []
+def espiar_instagram(cuenta_target):
+    """Esta función es la que llama tu app.py al darle a ESCANEAR"""
+    resultados = []
     try:
-        # Entramos a la cuenta del dealer
-        perfil = instaloader.Profile.from_username(L.context, cuenta_dealer)
-        
-        # Revisamos solo los 2 posts más nuevos para que sea rápido
+        perfil = instaloader.Profile.from_username(L.context, cuenta_target)
+        # Escaneamos los últimos 2 posts
         for i, post in enumerate(perfil.get_posts()):
             if i >= 2: break
-            
-            # Sacamos los comentarios
             for comentario in post.get_comments():
-                datos_finales.append({
-                    "Usuario": comentario.owner.username,
-                    "Mensaje": comentario.text,
-                    "Link del Carro": f"https://www.instagram.com/p/{post.shortcode}/"
+                resultados.append({
+                    "usuario_ig": comentario.owner.username,
+                    "comentario": comentario.text,
+                    "fuente": "Instagram",
+                    "vehiculo_interes": "Detectado por Radar"
                 })
-        return pd.DataFrame(datos_finales)
+        return resultados
     except Exception as e:
-        st.error(f"Hubo un problema: {e}")
-        return pd.DataFrame()
+        print(f"Error en Instagram: {e}")
+        return []
 
-# Esto es lo que verás en la pantalla de Streamlit
-st.title("🚀 PREGÓN AI - Buscador de Leads")
-cuenta = st.text_input("Escribe el Instagram del Dealer (sin el @):", "autorepuestomicarro27")
+def espiar_tiktok(cuenta_target):
+    # Por ahora devolvemos vacío para que no explote la app
+    return []
 
-if st.button("Buscar Clientes Ahora"):
-    resultado = buscar_clientes_potenciales(cuenta)
-    if not resultado.empty:
-        st.success("¡Encontramos gente interesada!")
-        st.table(resultado) # Te lo muestra como una lista limpia
-    else:
-        st.warning("No hay comentarios nuevos todavía.")
+def limpiar_y_calificar(datos, plataforma):
+    """Lógica simple para que aparezcan leads de una vez"""
+    leads_finales = []
+    palabras_clave = ["precio", "cuanto", "info", "donde", "disponible", "interesa"]
+    
+    for item in datos:
+        texto = item['comentario'].lower()
+        # Si tiene una palabra clave, le damos score alto
+        score = 0.85 if any(p in texto for p in palabras_clave) else 0.10
+        
+        # Solo mandamos a la base de datos los que tienen interés (score > 0.3)
+        if score > 0.3:
+            item['score_ia'] = score
+            leads_finales.append(item)
+            
+    return leads_finales
