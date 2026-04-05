@@ -49,9 +49,13 @@ def espiar_instagram(cuenta_target):
 def espiar_tiktok(t): return [] 
 
 def limpiar_y_calificar(datos, plataforma):
-    """IA de clasificación de Leads"""
+    """VERSIÓN DE PRUEBA: Deja pasar absolutamente TODO"""
     leads_finales = []
-    palabras_clave = ["precio", "cuanto", "info", "disponible", "donde", "ubicacion", "venden", "numero", "whatsapp", "interesa"]
+    for item in datos:
+        # Le damos score alto a todo para que aparezca en el Dashboard
+        item['score_ia'] = 0.99 
+        leads_finales.append(item)
+    return leads_finales
     
     for item in datos:
         texto = str(item['comentario']).lower()
