@@ -133,7 +133,7 @@ else:
 
         if menu == "Dashboard":
             st.title("📊 Panel de Leads")
-            res_leads = supabase.table("leads").select("*").eq("owner_id", user_id).execute()
+            res_leads = supabase.table("leads").select("*").eq("owner_id", user_id).order('created_at', desc=True).execute()
             data = res_leads.data if res_leads.data else []
             
             col_m1, col_m2 = st.columns(2)
@@ -146,38 +146,47 @@ else:
                         raw_score = float(lead.get('score_ia', 0))
                     except:
                         raw_score = 0.0
+                    
+                    # Detectamos si es vehiculo o producto general para mostrarlo bien
+                    interes = lead.get('producto_interes') or lead.get('vehiculo_interes') or "General"
                         
                     st.markdown(f"""
                     <div class="card">
-                        <h3>👤 @{lead.get('usuario_ig', 'usuario')}</h3>
-                        <p>🛍️ <b>Interés:</b> {lead.get('producto_interes', lead.get('vehiculo_interes', 'N/A'))}</p>
+                        <h3>👤 @{lead.get('usuario_ig', 'usuario')} <small>({lead.get('fuente', 'IG')})</small></h3>
+                        <p>🛍️ <b>Interés:</b> {interes}</p>
                         <p>💬 {lead.get('comentario', 'Sin comentario')}</p>
                         <p>🔥 <b>Score IA:</b> {int(raw_score * 100)}%</p>
                     </div>
                     """, unsafe_allow_html=True)
             else:
-                st.info("Sin leads nuevos por ahora.")
+                st.info("Sin leads nuevos por ahora. Ve al Radar y presiona Escanear.")
 
         elif menu == "Radar":
-            st.title("📡 Radar de Competencia (Automático)")
-            st.info("Aquí monitoreamos las cuentas de los dealers que tú elijas.")
+            st.title("📡 Radar de Competencia")
+            st.info("Monitorea cuentas de Instagram o TikTok para extraer leads automáticamente.")
             
             with st.expander("➕ Agregar Cuenta al Radar"):
                 col1, col2 = st.columns([1, 2])
                 with col1:
                     red_social = st.selectbox("Plataforma", ["Instagram", "TikTok"])
                 with col2:
-                    cuenta_id = st.text_input("Nombre de Usuario (ej: @dealer_perez):")
+                    cuenta_id = st.text_input("Nombre de Usuario (ej: @tienda_rd):")
                 
                 if st.button("Guardar en Radar"):
                     if cuenta_id:
-                        supabase.table("radar_config").insert({
-                            "owner_id": user_id,
-                            "cuenta_instagram": cuenta_id.replace("@", ""),
-                            "esta_activo": True,
-                            "plataforma": red_social # Coincide con tu columna 'plataforma'
-                        }).execute()
-                        st.success(f"Vigilando a {cuenta_id} en {red_social}")
+                        # Limpiamos el nombre
+                        limpio = cuenta_id.replace("@", "").strip()
+                        try:
+                            supabase.table("radar_config").insert({
+                                "owner_id": user_id,
+                                "cuenta_instagram": limpio,
+                                "esta_activo": True,
+                                "plataforma": red_social # Nombre estandarizado
+                            }).execute()
+                            st.success(f"✅ Vigilando a {limpio} en {red_social}")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error al guardar: {e}")
                     else:
                         st.error("Pon el nombre de la cuenta.")
 
@@ -185,76 +194,74 @@ else:
 
             st.subheader("🔄 Sincronización en Tiempo Real")
             if st.button("🚀 ESCANEAR TODAS LAS CUENTAS AHORA"):
-                with st.spinner("El Vigilante está barriendo las redes... Limpiando leads..."):
+                with st.spinner("El Vigilante está barriendo las redes... Esto puede tardar un poco..."):
                     from vigilante import espiar_instagram, espiar_tiktok, limpiar_y_calificar
                     
                     mis_cuentas = supabase.table("radar_config").select("*").eq("owner_id", user_id).execute()
                     
-                    total_leads = 0
+                    total_leads_nuevos = 0
                     if mis_cuentas.data:
                         for fila in mis_cuentas.data:
-                            plataforma = fila.get('plataform', 'Instagram')
+                            plataforma = fila.get('plataforma') or fila.get('plataform', 'Instagram')
                             user_target = fila.get('cuenta_instagram', '')
                             
                             if not user_target: continue
 
+                            # 1. Obtener datos crudos
                             if plataforma == "Instagram":
-                                datos = espiar_instagram(user_target)
+                                datos_crudos = espiar_instagram(user_target)
                             else:
-                                datos = espiar_tiktok(user_target)
+                                datos_crudos = espiar_tiktok(user_target)
                             
-                            # AQUÍ ESTÁ EL AJUSTE DE VOLUMEN (0.4)
-                            leads_encontrados = limpiar_y_calificar(datos, plataforma)
+                            # 2. IA califica (Ahora con umbral 0.3 configurado en vigilante.py)
+                            leads_calificados = limpiar_y_calificar(datos_crudos, plataforma)
                             
-                            for lead in leads_encontrados:
-                                # FILTRO DE VOLUMEN: Dejamos pasar todo lo que tenga 0.4 o más
-                                if lead.get('score_ia', 0) >= 0.4:
+                            # 3. Guardar en Supabase
+                            for lead in leads_calificados:
+                                try:
                                     supabase.table("leads").insert({
                                         "owner_id": user_id,
                                         "usuario_ig": lead['usuario_ig'],
                                         "comentario": lead['comentario'],
                                         "score_ia": lead['score_ia'],
-                                        "vehiculo_interes": lead['vehiculo_interes'],
+                                        "producto_interes": lead.get('vehiculo_interes', 'General'),
                                         "fuente": lead['fuente']
                                     }).execute()
-                                    total_leads += 1
+                                    total_leads_nuevos += 1
+                                except:
+                                    # Esto evita que se rompa si el lead ya existe (duplicado)
+                                    pass
                     
-                    if total_leads > 0:
-                        st.success(f"¡Éxito! Encontramos {total_leads} leads calientes.")
+                    if total_leads_nuevos > 0:
+                        st.success(f"¡Éxito! Encontramos {total_leads_nuevos} leads potenciales.")
                         st.balloons()
                     else:
-                        st.warning("Revisamos todo, pero no había comentarios con intención de compra hoy.")
+                        st.warning("No se encontraron comentarios nuevos con intención de compra clara hoy.")
 
             st.subheader("👀 Cuentas bajo vigilancia")
             mis_cuentas_view = supabase.table("radar_config").select("*").eq("owner_id", user_id).execute()
             if mis_cuentas_view.data:
                 for c in mis_cuentas_view.data:
-                    plataforma_nombre = c.get('plataform', 'Red Desconocida')
-                    cuenta_nombre = c.get('cuenta_instagram', 'Sin nombre')
-                    st.write(f"✅ {plataforma_nombre}: **@{cuenta_nombre}**")
+                    plat = c.get('plataforma') or c.get('plataform', 'IG')
+                    user_c = c.get('cuenta_instagram', 'N/A')
+                    st.write(f"✅ {plat}: **@{user_c}**")
             else:
                 st.write("Aún no tienes cuentas en el Radar.")
 
         elif menu == "Laboratorio IA":
-            st.title("🧠 Probador de Inteligencia (Groq)")
-            st.info("Prueba cómo la IA analiza la jerga dominicana.")
+            st.title("🧠 Probador de Inteligencia")
+            st.info("Escribe un comentario real para ver cómo lo califica la IA.")
             try:
                 from ia_engine import analizar_lead
-                test_input = st.text_input("Escribe un comentario de prueba:")
-                if st.button("Analizar ahora"):
+                test_input = st.text_area("Escribe el comentario aquí:")
+                if st.button("Analizar"):
                     if test_input:
-                        resultado = analizar_lead(test_input)
-                        st.json(resultado)
-                        st.divider()
-                        st.markdown(f"""
-                        <div class="card">
-                            <h3>👤 @usuario_test</h3>
-                            <p>🔥 <b>Score IA:</b> {int(resultado.get('score_ia', 0)*100)}%</p>
-                            <p>💬 {test_input}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        res = analizar_lead(test_input)
+                        st.json(res)
+                        score_visual = int(res.get('score_ia', 0) * 100)
+                        st.metric("Probabilidad de Venta", f"{score_visual}%")
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Error en Laboratorio: {e}")
 
         elif menu == "Suscripción":
             st.title("💳 Mi suscripción")
