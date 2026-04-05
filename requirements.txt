@@ -1,5 +1,5 @@
+apify-client
 streamlit
 pandas
 st-supabase-connection
-groq
-instaloader
+supabase
