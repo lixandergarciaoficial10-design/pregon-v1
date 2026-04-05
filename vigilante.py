@@ -1,27 +1,31 @@
 import streamlit as st
 from apify_client import ApifyClient
 
-# AHORA EL CÓDIGO ES SEGURO
-# Streamlit busca el token automáticamente en la configuración secreta
-APIFY_TOKEN = st.secrets["APIFY_TOKEN"] 
-client = ApifyClient(APIFY_TOKEN)
+# CONFIGURACIÓN SEGURA
+# Asegúrate de tener APIFY_TOKEN en los Secrets de Streamlit
+try:
+    APIFY_TOKEN = st.secrets["APIFY_TOKEN"]
+    client = ApifyClient(APIFY_TOKEN)
+except Exception as e:
+    st.error("⚠️ Error: No se encontró el APIFY_TOKEN en los Secrets de Streamlit.")
+    client = None
 
 def espiar_instagram(cuenta_target):
-    """Llama al motor de Apify para extraer comentarios reales"""
+    """Llama al motor profesional de Apify para extraer comentarios"""
+    if client is None:
+        return []
+
     cuenta_limpia = cuenta_target.replace("@", "").strip()
     
-    # Preparamos el robot de Apify (Instagram Scraper)
+    # Configuración del robot especializado en comentarios
     run_input = {
         "directUrls": [f"https://www.instagram.com/{cuenta_limpia}/"],
-        "resultsLimit": 20, # Traer los últimos 20 comentarios
-        "resultsType": "comments",
-        "searchLimit": 1,
-        "searchType": "hashtag"
+        "resultsLimit": 30, # Extraemos los últimos 30 para asegurar volumen
     }
 
     try:
-        # Ejecutamos el robot en la nube de Apify (Ellos no se bloquean)
-        run = client.actor("apify/instagram-scraper").call(run_input=run_input)
+        # Usamos el actor especializado (más eficiente)
+        run = client.actor("apify/instagram-comment-scraper").call(run_input=run_input)
         
         datos_crudos = []
         for item in client.dataset(run["defaultDatasetId"]).iterate_items():
@@ -36,20 +40,25 @@ def espiar_instagram(cuenta_target):
         st.error(f"Error en Apify: {e}")
         return []
 
-def espiar_tiktok(t): return [] # Próxima fase
+def espiar_tiktok(t): 
+    return [] # Pendiente para la v2
 
 def limpiar_y_calificar(datos, plataforma):
-    """IA de filtrado rápido"""
+    """Filtro de Inteligencia para detectar intención de compra"""
     leads_finales = []
-    palabras_clave = ["precio", "cuanto", "info", "disponible", "donde", "ubicacion", "venden", "numero"]
+    # Palabras que huelen a DINERO
+    palabras_clave = ["precio", "cuanto", "info", "disponible", "donde", "ubicacion", "venden", "numero", "whatsapp", "interesa"]
     
     for item in datos:
         texto = item['comentario'].lower()
-        # Si tiene interés real, score alto. Si no, 0.1
-        score = 0.90 if any(p in texto for p in palabras_clave) else 0.10
         
-        if score > 0.4: # Solo guardamos los que de verdad quieren comprar
-            item['score_ia'] = score
+        # Si el comentario tiene una palabra clave, le damos prioridad alta (0.95)
+        if any(p in texto for p in palabras_clave):
+            item['score_ia'] = 0.95
+            leads_finales.append(item)
+        # Si es un comentario genérico pero largo, lo dejamos como interés bajo
+        elif len(texto) > 15:
+            item['score_ia'] = 0.45
             leads_finales.append(item)
             
     return leads_finales
