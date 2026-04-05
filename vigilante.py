@@ -1,54 +1,65 @@
 import streamlit as st
 from instagrapi import Client
-import os
+import time
 
 def espiar_instagram(cuenta_target):
+    """Escaneo directo desde la nube usando una sesión de Instagram"""
     cl = Client()
     
-    # Intentamos usar una sesión guardada para que no te bloqueen
-    # Debes poner tu usuario y clave de IG en los Secrets de Streamlit
-    IG_USER = st.secrets["IG_USER"]
-    IG_PASS = st.secrets["IG_PASS"]
+    # Credenciales desde los Secrets
+    usuario_ig = st.secrets["IG_USER"]
+    clave_ig = st.secrets["IG_PASS"]
     
     try:
-        # 1. Login automático en la nube
-        cl.login(IG_USER, IG_PASS)
+        # 1. Login (La nube simula un dispositivo real)
+        cl.login(usuario_ig, clave_ig)
         
-        # 2. Buscamos al dealer
-        user_id = cl.user_id_from_username(cuenta_target.replace("@", ""))
+        # 2. Buscamos al dealer por su nombre de usuario
+        target = cuenta_target.replace("@", "").strip()
+        user_id = cl.user_id_from_username(target)
         
-        # 3. Traemos el último post
-        posts = cl.user_medias(user_id, 1)
-        if not posts:
+        # 3. Obtenemos el último post publicado
+        medias = cl.user_medias(user_id, 1)
+        if not medias:
             return []
             
-        media_id = posts[0].id
+        media_id = medias[0].id
         
-        # 4. Traemos los comentarios (esto es lo que vale dinero)
-        comments = cl.media_comments(media_id, 20)
+        # 4. Extraemos los últimos 30 comentarios de ese post
+        comments = cl.media_comments(media_id, 30)
         
         datos_crudos = []
-        for com in comments:
+        for c in comments:
             datos_crudos.append({
-                "usuario_ig": com.user.username,
-                "comentario": com.text,
+                "usuario_ig": c.user.username,
+                "comentario": c.text,
                 "fuente": "Instagram Cloud",
-                "vehiculo_interes": "Post Reciente"
+                "vehiculo_interes": f"Post: {medias[0].code}"
             })
         return datos_crudos
 
     except Exception as e:
-        st.error(f"Error de Conexión Instagram: {e}")
+        st.error(f"Error de conexión con Instagram: {e}")
         return []
 
+def espiar_tiktok(t):
+    return [] # Próxima actualización
+
 def limpiar_y_calificar(datos, plataforma):
+    """IA de calificación basada en intención de compra"""
     leads_finales = []
-    # Palabras de dinero en RD
-    palabras = ["precio", "cuanto", "info", "disponible", "donde", "ubicacion", "numero", "whatsapp", "interesa"]
+    # Diccionario de palabras 'calientes' para el mercado dominicano
+    keywords = ["precio", "cuanto", "info", "informacion", "donde", "ubicacion", "disponible", "whatsapp", "numero", "venden"]
     
     for item in datos:
         texto = item['comentario'].lower()
-        if any(p in texto for p in palabras):
-            item['score_ia'] = 0.95
+        # Si tiene una keyword, le damos score alto
+        if any(k in texto for k in keywords):
+            item['score_ia'] = 0.98
             leads_finales.append(item)
+        # Si el comentario es largo, quizás tiene interés aunque no use la palabra exacta
+        elif len(texto) > 15:
+            item['score_ia'] = 0.50
+            leads_finales.append(item)
+            
     return leads_finales
