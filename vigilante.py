@@ -9,10 +9,8 @@ def limpiar_nombre_usuario(user):
     return user.replace("@", "").strip().lower()
 
 def espiar_instagram(username):
-    """Cambiamos a una API más potente para Instagram."""
     user_limpio = limpiar_nombre_usuario(username)
-    
-    # Probaremos con un endpoint de búsqueda de perfil más directo
+    # Usaremos un endpoint más genérico que suele ser más estable
     url = "https://instagram-scraper-api2.p.rapidapi.com/v1/posts"
     headers = {
         "x-rapidapi-key": RAPIDAPI_KEY,
@@ -20,82 +18,77 @@ def espiar_instagram(username):
     }
     querystring = {"username_or_id_or_url": user_limpio}
     
-    lista_comentarios_total = []
     try:
-        response = requests.get(url, headers=headers, params=querystring, timeout=10)
+        response = requests.get(url, headers=headers, params=querystring, timeout=15)
+        
+        # Si la API responde 401 o 403, es falta de suscripción
+        if response.status_code != 200:
+            st.error(f"❌ Error de Conexión ({response.status_code}): Revisa tu suscripción en RapidAPI para esta API.")
+            return []
+
         data = response.json()
-        
-        # Estructura típica de APIs de alto rendimiento
         posts = data.get('data', {}).get('items', [])
-        st.write(f"🔍 **IG:** Buscando `{user_limpio}`... Se encontraron {len(posts)} publicaciones.")
         
+        # Si posts es None o vacío pero hay respuesta 200
+        if not posts:
+            st.warning(f"⚠️ La cuenta @{user_limpio} no devolvió posts. ¿Está bien escrito el nombre?")
+            return []
+
+        st.write(f"🔍 **IG:** `{user_limpio}` encontrado. Analizando {len(posts)} posts...")
+        
+        lista_comentarios = []
         for post in posts[:5]:
-            # Accedemos a la sección de comentarios
-            comments = post.get('comments', [])
-            for c in comments:
-                texto = c.get('text', '')
-                user = c.get('user', {}).get('username', 'anonimo')
-                if texto:
-                    lista_comentarios_total.append({'text': texto, 'username': user})
-        
-        return lista_comentarios_total
+            # Intentamos capturar comentarios si vienen incluidos
+            comms = post.get('comments', [])
+            for c in comms:
+                lista_comentarios.append({'text': c.get('text', ''), 'username': c.get('user', {}).get('username', 'anonimo')})
+        return lista_comentarios
+
     except Exception as e:
-        st.error(f"Error en Red IG: {e}")
+        st.error(f"Hubo un problema técnico: {e}")
         return []
 
 def espiar_tiktok(username):
-    """Cambiamos a una API de TikTok más estable."""
     user_limpio = limpiar_nombre_usuario(username)
-    url = "https://tiktok-scraper7.p.rapidapi.com/user/posts"
+    url = "https://tiktok-all-data-scrapper3.p.rapidapi.com/user_video_list/"
     headers = {
         "x-rapidapi-key": RAPIDAPI_KEY,
-        "x-rapidapi-host": "tiktok-scraper7.p.rapidapi.com"
+        "x-rapidapi-host": "tiktok-all-data-scrapper3.p.rapidapi.com"
     }
-    querystring = {"unique_id": user_limpio, "count": "10"}
+    querystring = {"unique_id": user_limpio}
     
-    lista_comentarios_total = []
     try:
-        response = requests.get(url, headers=headers, params=querystring, timeout=10)
+        response = requests.get(url, headers=headers, params=querystring, timeout=15)
         data = response.json()
         
-        videos = data.get('data', {}).get('videos', [])
-        st.write(f"🔍 **TT:** Buscando `{user_limpio}`... Se encontraron {len(videos)} videos.")
-        
-        for vid in videos:
-            # En TikTok a veces hay que pedir los comentarios aparte, 
-            # pero muchas APIs los incluyen en el objeto del video
-            comms = vid.get('comments', [])
-            for c in comms:
-                lista_comentarios_total.append({
-                    'text': c.get('text', ''),
-                    'username': c.get('author', {}).get('unique_id', 'anonimo_tt')
-                })
-        return lista_comentarios_total
-    except Exception as e:
-        st.error(f"Error en Red TT: {e}")
+        # Verificamos si la API devolvió un error de 'msg'
+        if data.get('msg') == 'Success':
+            videos = data.get('data', {}).get('videos', [])
+            st.write(f"🔍 **TT:** `{user_limpio}` encontrado. Analizando {len(videos)} videos...")
+            
+            lista_coms = []
+            for v in videos[:5]:
+                for c in v.get('comments_data', []):
+                    lista_coms.append({'text': c.get('text', ''), 'username': c.get('unique_id', 'anonimo')})
+            return lista_coms
+        else:
+            st.warning(f"⚠️ TikTok no respondió correctamente para @{user_limpio}")
+            return []
+    except:
         return []
 
 def limpiar_y_calificar(lista_comentarios, plataforma):
     leads_limpios = []
-    if not lista_comentarios:
-        return []
+    if not lista_comentarios: return []
 
     for c in lista_comentarios:
-        texto = c.get('text', '')
-        usuario = c.get('username', 'usuario_anonimo')
-        
-        if not texto: continue
-
-        analisis = analizar_lead(texto)
+        analisis = analizar_lead(c.get('text', ''))
         if analisis.get('score_ia', 0) >= 0.3:
             leads_limpios.append({
-                "usuario_ig": usuario,
-                "comentario": texto,
+                "usuario_ig": c.get('username'),
+                "comentario": c.get('text'),
                 "score_ia": analisis.get('score_ia'),
                 "vehiculo_interes": analisis.get('producto_interes', 'General'),
                 "fuente": plataforma
             })
-    
-    if leads_limpios:
-        st.success(f"✅ ¡La IA detectó {len(leads_limpios)} interesados en {plataforma}!")
     return leads_limpios
