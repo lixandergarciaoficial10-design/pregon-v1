@@ -1,41 +1,68 @@
 import requests
 import streamlit as st
+import re
 
 def espiar_instagram(username):
+    """
+    Intenta extraer datos de Instagram usando Scrape.do con protección de créditos.
+    """
+    if "SCRAPE_DO_TOKEN" not in st.secrets:
+        st.error("Falta SCRAPE_DO_TOKEN en los Secrets.")
+        return []
+
     token = st.secrets["SCRAPE_DO_TOKEN"]
     target = username.replace("@", "").strip()
-    
-    # CAMBIO CRÍTICO: Usamos la URL de búsqueda o una publicación específica si la tienes
-    # Pero para perfiles, vamos a forzar el parámetro de 'extraHeaders'
     target_url = f"https://www.instagram.com/{target}/"
     
-    # Agregamos 'geoCode=do' para que use IPs de República Dominicana (más natural para cuentas locales)
-    # Y quitamos el 'render=true' por un momento para probar si el HTML estático pasa el muro
+    # Usamos geoCode=do para parecer una conexión local de República Dominicana
     api_url = f"http://api.scrape.do?token={token}&url={target_url}&super=true&geoCode=do"
     
     try:
-        # Si ya falló muchas veces, lanzamos un error antes de gastar
         response = requests.get(api_url, timeout=25)
         
         if response.status_code == 200:
             html = response.text
             
-            # Si vemos 'login', 'cuestión de seguridad' o 'challenge', paramos en seco
+            # BLOQUEO DE SEGURIDAD: Si detecta login, corta la ejecución
             if any(x in html.lower() for x in ["login", "challenge", "checkpoint", "robot"]):
-                st.error(f"🚫 Instagram bloqueó el acceso a @{target}. NO sigas intentando con esta cuenta ahora.")
+                st.error(f"🚫 Instagram bloqueó el acceso a @{target}. No gastes más créditos ahora.")
                 return []
 
-            # Si el HTML parece real, buscamos los comentarios
-            import re
+            # Buscamos patrones de texto de comentarios
             comentarios = re.findall(r'"text":"([^"]+)"', html)
             
             if comentarios:
+                # Si hay datos reales, los devolvemos
                 return [{"usuario_ig": f"lead_{target}", "comentario": c} for c in comentarios[:15]]
             
-            # Si llegamos aquí y no hay nada, devolvemos una lista VACÍA para que el bucle de app.py se detenga
+            # Si no hay comentarios reales pero entró, mandamos un aviso silencioso
             return []
         else:
             st.error(f"Error de Scrape.do: {response.status_code}")
             return []
-    except:
+    except Exception as e:
+        st.error(f"Error de red: {e}")
         return []
+
+def limpiar_y_calificar(datos, plataforma):
+    """
+    ESTA FUNCIÓN ES LA QUE FALTABA Y CAUSABA EL IMPORT ERROR.
+    """
+    from ia_engine import analizar_lead
+    finales = []
+    
+    if not datos:
+        return []
+
+    for d in datos:
+        # Usamos tu motor de IA que ya confirmamos que funciona
+        res = analizar_lead(d["comentario"])
+        
+        # Solo leads con intención de compra (Score > 0.3)
+        if res["score_ia"] > 0.3:
+            d["score_ia"] = res["score_ia"]
+            d["producto_interes"] = res.get("interes", "General")
+            d["fuente"] = plataforma
+            finales.append(d)
+            
+    return finales
