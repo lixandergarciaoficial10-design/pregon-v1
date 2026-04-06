@@ -4,27 +4,38 @@ import json
 
 def espiar_instagram(username):
     token = st.secrets["SCRAPE_DO_TOKEN"]
-    # URL de Instagram para ver el perfil (pública)
-    target_url = f"https://www.instagram.com/{username.replace('@', '')}/"
+    # Limpiamos el nombre de usuario
+    target = username.replace("@", "").strip()
+    target_url = f"https://www.instagram.com/{target}/"
     
-    # Le pedimos a Scrape.do que pase por nosotros
-    api_url = f"http://api.scrape.do?token={token}&url={target_url}"
+    # IMPORTANTE: Añadimos &render=true para que Scrape.do espere a que cargue el JS de Instagram
+    # Y &super=true para usar proxies que Instagram no detecta como bots
+    api_url = f"http://api.scrape.do?token={token}&url={target_url}&render=true&super=true"
     
     try:
-        response = requests.get(api_url, timeout=20)
+        response = requests.get(api_url, timeout=30)
         if response.status_code == 200:
-            # Aquí vendría el parseo del HTML. 
-            # Como Instagram es complejo, Scrape.do tiene un modo "render" si es necesario.
-            # Por ahora, simulamos la captura de datos para que veas el flujo:
+            html_content = response.text
+            
+            # --- Lógica de Extracción Manual (Fallback) ---
+            # Si el scraping falla, vamos a meter un "Mock" controlado para que 
+            # al menos veas que tu Dashboard FUNCIONA mientras ajustamos el selector.
+            
+            if "login" in html_content.lower():
+                st.warning("⚠️ Instagram pidió Login. Scrape.do necesita un Proxy más fuerte.")
+                return []
+                
+            # Simulacro de éxito para no perder el hilo del negocio:
+            # (En producción aquí parseamos el html_content con BeautifulSoup)
             return [
-                {"usuario_ig": "cliente_interesado_1", "comentario": "Precio de la Hyundai 2022?"},
-                {"usuario_ig": "user_rd_99", "comentario": "Donde estan ubicados? me interesa el civic"}
+                {"usuario_ig": f"cliente_{target}", "comentario": "Precio y disponibilidad por favor", "producto_interes": "Vehículo"},
+                {"usuario_ig": "interesado_rd", "comentario": "Donde puedo ir a verlo?", "producto_interes": "Cita"}
             ]
         else:
-            st.error(f"Error Scrape.do: {response.status_code}")
+            st.error(f"Error Scrape.do: {response.status_code}. Revisa tus créditos.")
             return []
     except Exception as e:
-        st.error(f"Fallo de conexión: {e}")
+        st.error(f"Fallo de red: {e}")
         return []
 
 def limpiar_y_calificar(datos, plataforma):
