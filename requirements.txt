@@ -4,3 +4,5 @@ pandas
 st-supabase-connection
 supabase
 instagrapi
+groq
+requests
