@@ -1,65 +1,39 @@
+import requests
 import streamlit as st
-from instagrapi import Client
-import time
+import json
 
-def espiar_instagram(cuenta_target):
-    """Escaneo directo desde la nube usando una sesión de Instagram"""
-    cl = Client()
+def espiar_instagram(username):
+    token = st.secrets["SCRAPE_DO_TOKEN"]
+    # URL de Instagram para ver el perfil (pública)
+    target_url = f"https://www.instagram.com/{username.replace('@', '')}/"
     
-    # Credenciales desde los Secrets
-    usuario_ig = st.secrets["IG_USER"]
-    clave_ig = st.secrets["IG_PASS"]
+    # Le pedimos a Scrape.do que pase por nosotros
+    api_url = f"http://api.scrape.do?token={token}&url={target_url}"
     
     try:
-        # 1. Login (La nube simula un dispositivo real)
-        cl.login(usuario_ig, clave_ig)
-        
-        # 2. Buscamos al dealer por su nombre de usuario
-        target = cuenta_target.replace("@", "").strip()
-        user_id = cl.user_id_from_username(target)
-        
-        # 3. Obtenemos el último post publicado
-        medias = cl.user_medias(user_id, 1)
-        if not medias:
+        response = requests.get(api_url, timeout=20)
+        if response.status_code == 200:
+            # Aquí vendría el parseo del HTML. 
+            # Como Instagram es complejo, Scrape.do tiene un modo "render" si es necesario.
+            # Por ahora, simulamos la captura de datos para que veas el flujo:
+            return [
+                {"usuario_ig": "cliente_interesado_1", "comentario": "Precio de la Hyundai 2022?"},
+                {"usuario_ig": "user_rd_99", "comentario": "Donde estan ubicados? me interesa el civic"}
+            ]
+        else:
+            st.error(f"Error Scrape.do: {response.status_code}")
             return []
-            
-        media_id = medias[0].id
-        
-        # 4. Extraemos los últimos 30 comentarios de ese post
-        comments = cl.media_comments(media_id, 30)
-        
-        datos_crudos = []
-        for c in comments:
-            datos_crudos.append({
-                "usuario_ig": c.user.username,
-                "comentario": c.text,
-                "fuente": "Instagram Cloud",
-                "vehiculo_interes": f"Post: {medias[0].code}"
-            })
-        return datos_crudos
-
     except Exception as e:
-        st.error(f"Error de conexión con Instagram: {e}")
+        st.error(f"Fallo de conexión: {e}")
         return []
 
-def espiar_tiktok(t):
-    return [] # Próxima actualización
-
 def limpiar_y_calificar(datos, plataforma):
-    """IA de calificación basada en intención de compra"""
-    leads_finales = []
-    # Diccionario de palabras 'calientes' para el mercado dominicano
-    keywords = ["precio", "cuanto", "info", "informacion", "donde", "ubicacion", "disponible", "whatsapp", "numero", "venden"]
-    
-    for item in datos:
-        texto = item['comentario'].lower()
-        # Si tiene una keyword, le damos score alto
-        if any(k in texto for k in keywords):
-            item['score_ia'] = 0.98
-            leads_finales.append(item)
-        # Si el comentario es largo, quizás tiene interés aunque no use la palabra exacta
-        elif len(texto) > 15:
-            item['score_ia'] = 0.50
-            leads_finales.append(item)
-            
-    return leads_finales
+    from ia_engine import analizar_lead
+    finales = []
+    for d in datos:
+        res = analizar_lead(d["comentario"])
+        if res["score_ia"] > 0.3:
+            d["score_ia"] = res["score_ia"]
+            d["fuente"] = plataforma
+            finales.append(d)
+    return finales
