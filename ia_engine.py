@@ -43,26 +43,32 @@ def analizar_comentario(texto):
     # dominicano.
 
     prompt = f"""
-    Eres un vendedor experto en República Dominicana.
+Eres un experto en ventas en República Dominicana.
 
-    Analiza este comentario:
-    "{texto}"
+Analiza este comentario:
+"{texto}"
 
-    Determina si la persona quiere comprar.
+Tu objetivo es detectar intención de compra REAL.
 
-    Reglas:
-    - Si pregunta "precio", "info", "disponible" → score alto (0.8 - 1.0)
-    - Si dice "me interesa", "dónde queda" → score medio (0.5 - 0.7)
-    - Si es irrelevante → score bajo (0.0 - 0.3)
+Reglas:
 
-    Responde SOLO en JSON:
+- score_ia = 1.0 → quiere comprar YA (precio, info, whatsapp, donde queda)
+- score_ia = 0.7 → interesado (me interesa, todavía disponible)
+- score_ia = 0.5 → curiosidad (pregunta general)
+- score_ia = 0.0 → sin valor (emoji, spam, chiste)
 
-    {{
-        "score_ia": numero,
-        "intencion": "explicación corta",
-        "producto_interes": "si aplica"
-    }}
-    """
+IMPORTANTE:
+- Si menciona dinero, precio o compra → mínimo 0.7
+- No seas conservador, detecta oportunidades
+
+Responde SOLO en JSON:
+
+{{
+  "score_ia": numero,
+  "intencion": "explicación corta y clara",
+  "producto_interes": "producto si se puede inferir"
+}}
+"""
 
     try:
         # ====================================
