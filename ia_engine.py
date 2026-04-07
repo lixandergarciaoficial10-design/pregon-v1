@@ -1,44 +1,88 @@
+# ============================================
+# 🧠 IA ENGINE - PREGÓN AI
+# ============================================
+# Este archivo se encarga de analizar comentarios
+# y determinar si una persona tiene intención de compra.
+# ============================================
+
 import streamlit as st
 from groq import Groq
 import json
 
-# Esto busca la llave que guardaste en los Secrets de Streamlit
-GROQ_KEY = st.secrets["GROQ_API_KEY"]
+# ============================================
+# 🔐 CONFIGURACIÓN DEL CLIENTE GROQ
+# ============================================
 
-client = Groq(api_key=GROQ_KEY)
+# Obtenemos la API KEY desde los secrets de Streamlit
+GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 
-def analizar_lead(comentario):
-    prompt = f"""
-    Eres un cerrador de ventas agresivo en República Dominicana. 
-    Analiza este comentario: "{comentario}"
-    
-    TU MISIÓN: No descartes NADA que huela a dinero.
-    
-    CRITERIOS DE SCORE (0.0 a 1.0):
-    - 1.0: Pregunta "Precio", "Info", "Cuanto", "WhatsApp", o "Donde tan".
-    - 0.8: Pregunta por el inicial, financiamiento o si aceptan cambios.
-    - 0.6: Comentarios de "Me interesa", "Quiero ir a verlo", o "¿Todavía lo tienen?".
-    - 0.5: Preguntas sobre el estado del producto (km, año, condición, color).
-    - 0.0: Solo emojis sin texto, o insultos.
-    
-    Cualquier duda sobre el producto debe tener al menos 0.5 de score.
-    
-    Responde estrictamente en JSON:
-    {{"score_ia": valor, "producto_interes": "nombre", "intencion": "resumen"}}
+# Creamos el cliente de Groq
+client = Groq(api_key=GROQ_API_KEY)
+
+
+# ============================================
+# 🧠 FUNCIÓN PRINCIPAL DE ANÁLISIS
+# ============================================
+
+def analizar_comentario(texto):
     """
-    # ... resto del código
+    Esta función recibe un comentario de TikTok o Instagram
+    y devuelve un análisis en formato JSON con:
+
+    - score_ia (probabilidad de compra)
+    - intencion (qué quiere el cliente)
+    - producto_interes (si se puede inferir)
+
+    """
+
+    # ========================================
+    # 🧾 PROMPT INTELIGENTE
+    # ========================================
+    # Aquí le damos instrucciones claras a la IA
+    # para que analice como un vendedor experto
+    # dominicano.
+
+    prompt = f"""
+    Eres un vendedor experto en República Dominicana.
+
+    Analiza este comentario:
+    "{texto}"
+
+    Determina si la persona quiere comprar.
+
+    Reglas:
+    - Si pregunta "precio", "info", "disponible" → score alto (0.8 - 1.0)
+    - Si dice "me interesa", "dónde queda" → score medio (0.5 - 0.7)
+    - Si es irrelevante → score bajo (0.0 - 0.3)
+
+    Responde SOLO en JSON:
+
+    {{
+        "score_ia": numero,
+        "intencion": "explicación corta",
+        "producto_interes": "si aplica"
+    }}
+    """
 
     try:
+        # ====================================
+        # 📡 LLAMADA A GROQ
+        # ====================================
         response = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.3-70b-versatile",
             response_format={"type": "json_object"}
         )
-        # Convertimos la respuesta de texto a un diccionario de Python
-        return json.loads(response.choices[0].message.content)
+
+        # Convertimos la respuesta a diccionario Python
+        resultado = json.loads(response.choices[0].message.content)
+
+        return resultado
+
     except Exception as e:
+        # En caso de error devolvemos algo controlado
         return {
-            "score_ia": 0, 
-            "producto_interes": "Error", 
-            "intencion": f"Error de conexión: {e}"
+            "score_ia": 0,
+            "intencion": f"Error: {str(e)}",
+            "producto_interes": "N/A"
         }
