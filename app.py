@@ -3,11 +3,10 @@
 # ============================================
 
 import streamlit as st
-from database import guardar_leads, obtener_leads
-from scraper_tiktok.py import procesar_comentarios
+from database import guardar_leads, obtener_leads, verificar_demo, marcar_demo_usado
+from scraper_tiktok import procesar_comentarios
 from analisis_competencia import analizar_competencia, generar_insight
 import plotly.express as px
-from database import verificar_demo, marcar_demo_usado
 
 # ============================================
 # 🎨 CONFIGURACIÓN VISUAL
@@ -15,31 +14,28 @@ from database import verificar_demo, marcar_demo_usado
 
 st.set_page_config(page_title="PREGÓN AI", layout="wide", page_icon="🚀")
 
-# 🎨 CSS PREMIUM
 st.markdown("""
 <style>
 .stApp {
-    background: linear-gradient(180deg, #020617, #0F172A);
+    background: #F8FAFC;
 }
 h1, h2, h3, p {
-    color: #F9FAFB;
+    color: #0F172A;
 }
 .card {
-    background: linear-gradient(145deg, #111827, #1F2937);
+    background: white;
     padding: 20px;
     border-radius: 15px;
     margin-bottom: 15px;
-    border: 1px solid #374151;
-    box-shadow: 0px 4px 15px rgba(0,0,0,0.5);
+    border: 1px solid #E2E8F0;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.05);
 }
 .metric {
-    background: #111827;
+    background: white;
     padding: 15px;
     border-radius: 10px;
     text-align: center;
-}
-button {
-    border-radius: 8px !important;
+    border: 1px solid #E2E8F0;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -77,9 +73,9 @@ else:
 
     user_id = st.session_state.user_id
 
-    # SIDEBAR
     st.sidebar.title("🚀 PREGÓN AI")
     menu = st.sidebar.radio("Menú", ["Dashboard", "Escanear", "Análisis Competencia"])
+
     if st.sidebar.button("Cerrar sesión"):
         st.session_state.user_id = None
         st.rerun()
@@ -97,7 +93,6 @@ else:
         calientes = len([l for l in leads if l["score_ia"] > 0.8])
         medios = len([l for l in leads if 0.5 <= l["score_ia"] <= 0.8])
 
-        # 🔥 MÉTRICAS
         col1, col2, col3 = st.columns(3)
 
         col1.markdown(f"<div class='metric'><h2>{total}</h2><p>Leads Totales</p></div>", unsafe_allow_html=True)
@@ -106,22 +101,19 @@ else:
 
         st.divider()
 
-        # 🔥 LISTA DE LEADS
         if leads:
             for l in leads:
-
                 score = int(l["score_ia"] * 100)
 
                 st.markdown(f"""
                 <div class="card">
                     <h3>👤 @{l['usuario']}</h3>
                     <p>💬 {l['comentario']}</p>
-                    <p>🔥 <b>Probabilidad de compra:</b> {score}%</p>
+                    <p>🔥 <b>Probabilidad:</b> {score}%</p>
                     <p>🧠 {l['intencion']}</p>
                     <p>📦 {l['producto_interes']}</p>
                 </div>
                 """, unsafe_allow_html=True)
-
         else:
             st.info("No hay clientes detectados aún.")
 
@@ -138,7 +130,6 @@ else:
 
             if not cuenta:
                 st.warning("Escribe un usuario")
-
             else:
                 with st.spinner("Analizando mercado..."):
 
@@ -150,85 +141,63 @@ else:
                         st.balloons()
                     else:
                         st.warning("No se detectaron clientes relevantes")
-elif menu == "Análisis Competencia":
 
-    st.title("📊 Análisis de Competencia")
+    # ========================================
+    # 📊 ANÁLISIS COMPETENCIA (ARREGLADO)
+    # ========================================
+    elif menu == "Análisis Competencia":
 
-    # ===============================
-    # 🔒 VERIFICAR SI YA USÓ DEMO
-    # ===============================
-    ya_uso = verificar_demo(user_id)
+        st.title("📊 Análisis de Competencia")
 
-    if ya_uso:
-        # 🚫 BLOQUEO PREMIUM
-        st.warning("Ya usaste tu análisis gratuito")
+        ya_uso = verificar_demo(user_id)
 
-        st.markdown("""
-        ## 🔓 Desbloquea el acceso completo
+        if ya_uso:
+            st.warning("Ya usaste tu análisis gratuito")
 
-        Obtén análisis ilimitados, monitoreo automático
-        y detección de clientes en tiempo real.
+            st.markdown("""
+            ## 🔓 Desbloquea el acceso completo
+            💰 Plan desde RD$1,500
+            """)
 
-        💰 Plan desde RD$1,500
-        """)
+            st.button("💳 Activar Plan")
 
-        st.button("💳 Activar Plan")
+        else:
 
-    else:
-        # ✅ DEMO DISPONIBLE
+            cuentas = st.text_area("Ejemplo: tienda1, tienda2, tienda3")
 
-        st.markdown("Ingresa hasta 10 cuentas de TikTok")
+            if st.button("Analizar 🚀"):
 
-        cuentas = st.text_area("Ejemplo: tienda1, tienda2, tienda3")
+                lista = [c.strip() for c in cuentas.split(",") if c.strip()]
 
-        if st.button("Analizar 🚀"):
+                if not lista:
+                    st.warning("Ingresa al menos una cuenta")
+                else:
+                    with st.spinner("Analizando competencia..."):
 
-            lista = [c.strip() for c in cuentas.split(",") if c.strip()]
+                        ranking = analizar_competencia(lista)
 
-            if not lista:
-                st.warning("Ingresa al menos una cuenta")
+                        if not ranking:
+                            st.error("No se pudo obtener información")
+                        else:
+                            nombres = [r["usuario"] for r in ranking]
+                            views = [r["promedio_views"] for r in ranking]
 
-            else:
-                with st.spinner("Analizando competencia..."):
+                            fig = px.bar(
+                                x=nombres,
+                                y=views,
+                                title="Rendimiento de Competencia"
+                            )
 
-                    ranking = analizar_competencia(lista)
+                            st.plotly_chart(fig, use_container_width=True)
 
-                    if not ranking:
-                        st.error("No se pudo obtener información")
-                    else:
-                        # ===============================
-                        # 📊 GRÁFICO
-                        # ===============================
-                        import plotly.express as px
+                            st.subheader("🏆 Ranking")
 
-                        nombres = [r["usuario"] for r in ranking]
-                        views = [r["promedio_views"] for r in ranking]
+                            for i, r in enumerate(ranking, 1):
+                                st.write(f"{i}. @{r['usuario']} - {r['promedio_views']} views")
 
-                        fig = px.bar(
-                            x=nombres,
-                            y=views,
-                            title="Rendimiento de Competencia"
-                        )
+                            insight = generar_insight(ranking)
 
-                        st.plotly_chart(fig, use_container_width=True)
+                            st.subheader("🧠 Insight")
+                            st.info(insight)
 
-                        # ===============================
-                        # 🏆 RANKING
-                        # ===============================
-                        st.subheader("🏆 Ranking")
-
-                        for i, r in enumerate(ranking, 1):
-                            st.write(f"{i}. @{r['usuario']} - {r['promedio_views']} views")
-
-                        # ===============================
-                        # 🧠 INSIGHT
-                        # ===============================
-                        insight = generar_insight(ranking)
-
-                        st.subheader("🧠 Insight")
-                        st.info(insight)
-
-                        # ===============================
-                        # 🔒 MARCAR COMO USADO
-                        # ===============================
-                        marcar_demo_usado(user_id)
+                            marcar_demo_usado(user_id)
