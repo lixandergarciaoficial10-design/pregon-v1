@@ -4,7 +4,7 @@
 
 import streamlit as st
 from database import guardar_leads, obtener_leads
-from scraper_tiktok import procesar_comentarios
+from scraper_tiktok.py import procesar_comentarios
 
 # ============================================
 # 🎨 CONFIGURACIÓN VISUAL
