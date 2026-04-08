@@ -7,6 +7,7 @@ from database import guardar_leads, obtener_leads
 from scraper_tiktok.py import procesar_comentarios
 from analisis_competencia import analizar_competencia, generar_insight
 import plotly.express as px
+from database import verificar_demo, marcar_demo_usado
 
 # ============================================
 # 🎨 CONFIGURACIÓN VISUAL
@@ -149,64 +150,85 @@ else:
                         st.balloons()
                     else:
                         st.warning("No se detectaron clientes relevantes")
-
 elif menu == "Análisis Competencia":
 
     st.title("📊 Análisis de Competencia")
 
-    st.markdown("Ingresa hasta 10 cuentas de TikTok (sin @)")
+    # ===============================
+    # 🔒 VERIFICAR SI YA USÓ DEMO
+    # ===============================
+    ya_uso = verificar_demo(user_id)
 
-    cuentas = st.text_area("Ejemplo: tienda1, tienda2, tienda3")
+    if ya_uso:
+        # 🚫 BLOQUEO PREMIUM
+        st.warning("Ya usaste tu análisis gratuito")
 
-    if st.button("Analizar 🚀"):
+        st.markdown("""
+        ## 🔓 Desbloquea el acceso completo
 
-        lista = [c.strip() for c in cuentas.split(",") if c.strip()]
+        Obtén análisis ilimitados, monitoreo automático
+        y detección de clientes en tiempo real.
 
-        if not lista:
-            st.warning("Ingresa al menos una cuenta")
+        💰 Plan desde RD$1,500
+        """)
 
-        else:
-            with st.spinner("Analizando competencia..."):
+        st.button("💳 Activar Plan")
 
-                ranking = analizar_competencia(lista)
+    else:
+        # ✅ DEMO DISPONIBLE
 
-                if not ranking:
-                    st.error("No se pudo obtener información")
-                else:
-                    # ===============================
-                    # 📊 DATAFRAME
-                    # ===============================
-                    nombres = [r["usuario"] for r in ranking]
-                    views = [r["promedio_views"] for r in ranking]
+        st.markdown("Ingresa hasta 10 cuentas de TikTok")
 
-                    # ===============================
-                    # 📈 GRÁFICO PRO (Plotly)
-                    # ===============================
-                    fig = px.bar(
-                        x=nombres,
-                        y=views,
-                        labels={"x": "Competidor", "y": "Promedio Views"},
-                        title="Rendimiento de Competencia"
-                    )
+        cuentas = st.text_area("Ejemplo: tienda1, tienda2, tienda3")
 
-                    st.plotly_chart(fig, use_container_width=True)
+        if st.button("Analizar 🚀"):
 
-                    # ===============================
-                    # 🏆 RANKING
-                    # ===============================
-                    st.subheader("🏆 Ranking")
+            lista = [c.strip() for c in cuentas.split(",") if c.strip()]
 
-                    for i, r in enumerate(ranking, 1):
-                        st.markdown(f"""
-                        **{i}. @{r['usuario']}**
-                        - Promedio views: {r['promedio_views']}
-                        - Máximo views: {r['max_views']}
-                        """)
+            if not lista:
+                st.warning("Ingresa al menos una cuenta")
 
-                    # ===============================
-                    # 🧠 INSIGHT IA
-                    # ===============================
-                    insight = generar_insight(ranking)
+            else:
+                with st.spinner("Analizando competencia..."):
 
-                    st.subheader("🧠 Insight Inteligente")
-                    st.info(insight)
+                    ranking = analizar_competencia(lista)
+
+                    if not ranking:
+                        st.error("No se pudo obtener información")
+                    else:
+                        # ===============================
+                        # 📊 GRÁFICO
+                        # ===============================
+                        import plotly.express as px
+
+                        nombres = [r["usuario"] for r in ranking]
+                        views = [r["promedio_views"] for r in ranking]
+
+                        fig = px.bar(
+                            x=nombres,
+                            y=views,
+                            title="Rendimiento de Competencia"
+                        )
+
+                        st.plotly_chart(fig, use_container_width=True)
+
+                        # ===============================
+                        # 🏆 RANKING
+                        # ===============================
+                        st.subheader("🏆 Ranking")
+
+                        for i, r in enumerate(ranking, 1):
+                            st.write(f"{i}. @{r['usuario']} - {r['promedio_views']} views")
+
+                        # ===============================
+                        # 🧠 INSIGHT
+                        # ===============================
+                        insight = generar_insight(ranking)
+
+                        st.subheader("🧠 Insight")
+                        st.info(insight)
+
+                        # ===============================
+                        # 🔒 MARCAR COMO USADO
+                        # ===============================
+                        marcar_demo_usado(user_id)
