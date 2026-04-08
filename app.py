@@ -149,3 +149,64 @@ else:
                         st.balloons()
                     else:
                         st.warning("No se detectaron clientes relevantes")
+
+elif menu == "Análisis Competencia":
+
+    st.title("📊 Análisis de Competencia")
+
+    st.markdown("Ingresa hasta 10 cuentas de TikTok (sin @)")
+
+    cuentas = st.text_area("Ejemplo: tienda1, tienda2, tienda3")
+
+    if st.button("Analizar 🚀"):
+
+        lista = [c.strip() for c in cuentas.split(",") if c.strip()]
+
+        if not lista:
+            st.warning("Ingresa al menos una cuenta")
+
+        else:
+            with st.spinner("Analizando competencia..."):
+
+                ranking = analizar_competencia(lista)
+
+                if not ranking:
+                    st.error("No se pudo obtener información")
+                else:
+                    # ===============================
+                    # 📊 DATAFRAME
+                    # ===============================
+                    nombres = [r["usuario"] for r in ranking]
+                    views = [r["promedio_views"] for r in ranking]
+
+                    # ===============================
+                    # 📈 GRÁFICO PRO (Plotly)
+                    # ===============================
+                    fig = px.bar(
+                        x=nombres,
+                        y=views,
+                        labels={"x": "Competidor", "y": "Promedio Views"},
+                        title="Rendimiento de Competencia"
+                    )
+
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    # ===============================
+                    # 🏆 RANKING
+                    # ===============================
+                    st.subheader("🏆 Ranking")
+
+                    for i, r in enumerate(ranking, 1):
+                        st.markdown(f"""
+                        **{i}. @{r['usuario']}**
+                        - Promedio views: {r['promedio_views']}
+                        - Máximo views: {r['max_views']}
+                        """)
+
+                    # ===============================
+                    # 🧠 INSIGHT IA
+                    # ===============================
+                    insight = generar_insight(ranking)
+
+                    st.subheader("🧠 Insight Inteligente")
+                    st.info(insight)
