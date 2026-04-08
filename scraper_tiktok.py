@@ -18,7 +18,7 @@ from ia_engine import analizar_comentario
 # ============================================
 
 # API KEY desde secrets
-RAPIDAPI_KEY = st.secrets["RAPIDAPI_KEY"]
+RAPIDAPI_KEY = st.secrets["RAPIDAPI_KEY", None]
 
 HEADERS = {
     "X-RapidAPI-Key": RAPIDAPI_KEY,
