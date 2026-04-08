@@ -24,7 +24,7 @@ client = Groq(api_key=GROQ_API_KEY)
 # 🧠 FUNCIÓN PRINCIPAL DE ANÁLISIS
 # ============================================
 
-def analizar_comentario(texto):
+def analizar_lead(comentario):
     """
     Esta función recibe un comentario de TikTok o Instagram
     y devuelve un análisis en formato JSON con:
