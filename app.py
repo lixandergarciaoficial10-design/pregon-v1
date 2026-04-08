@@ -16,29 +16,115 @@ st.set_page_config(page_title="PREGÓN AI", layout="wide", page_icon="🚀")
 
 st.markdown("""
 <style>
+
+/* ====== FONDO GENERAL ====== */
 .stApp {
-    background-color: #F8FAFC;
+    background: linear-gradient(180deg, #F8FAFC 0%, #EEF2FF 100%);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
-h1, h2, h3 {
+
+/* ====== TITULOS ====== */
+h1 {
     color: #0F172A;
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -1px;
 }
+
+h2, h3 {
+    color: #1E293B;
+}
+
+/* ====== TEXTO ====== */
+p, label {
+    color: #475569 !important;
+    font-size: 15px;
+}
+
+/* ====== INPUTS ====== */
+input, textarea {
+    background: white !important;
+    color: #0F172A !important;
+    border-radius: 12px !important;
+    border: 1px solid #E2E8F0 !important;
+    padding: 10px !important;
+    transition: all 0.2s ease;
+}
+
+input:focus, textarea:focus {
+    border: 1px solid #6366F1 !important;
+    box-shadow: 0px 0px 0px 3px rgba(99,102,241,0.2);
+}
+
+/* ====== BOTONES ====== */
+.stButton > button {
+    background: linear-gradient(135deg, #6366F1, #4F46E5);
+    color: white;
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-weight: 600;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0px 6px 20px rgba(99,102,241,0.3);
+}
+
+/* ====== TARJETAS ====== */
 .card {
     background: white;
-    padding: 20px;
-    border-radius: 15px;
+    padding: 22px;
+    border-radius: 18px;
     margin-bottom: 15px;
-    box-shadow: 0px 4px 15px rgba(0,0,0,0.08);
+    border: 1px solid #E2E8F0;
+    box-shadow: 0px 10px 30px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
 }
+
+.card:hover {
+    transform: translateY(-3px);
+}
+
+/* ====== MÉTRICAS ====== */
 .metric {
     background: white;
-    padding: 20px;
-    border-radius: 12px;
+    padding: 25px;
+    border-radius: 18px;
     text-align: center;
-    box-shadow: 0px 2px 10px rgba(0,0,0,0.05);
+    border: 1px solid #E2E8F0;
+    box-shadow: 0px 6px 20px rgba(0,0,0,0.05);
 }
-button {
-    border-radius: 10px !important;
+
+/* ====== SIDEBAR ====== */
+[data-testid="stSidebar"] {
+    background: white !important;
+    border-right: 1px solid #E2E8F0;
 }
+
+/* ====== SEPARADORES ====== */
+hr {
+    border: none;
+    height: 1px;
+    background: #E2E8F0;
+    margin: 20px 0;
+}
+
+/* ====== ALERTAS ====== */
+.stAlert {
+    border-radius: 12px !important;
+}
+
+/* ====== SCROLL ====== */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-thumb {
+    background: #CBD5F5;
+    border-radius: 10px;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
