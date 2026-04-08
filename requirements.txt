@@ -6,3 +6,4 @@ supabase
 instagrapi
 groq
 requests
+plotly
