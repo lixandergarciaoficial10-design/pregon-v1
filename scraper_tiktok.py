@@ -1,45 +1,44 @@
 # ============================================
-# 📡 SCRAPER TIKTOK - PREGÓN AI
+# 📡 SCRAPER TIKTOK - PREGÓN AI (VERSIÓN SEGURA)
 # ============================================
-# Este archivo se encarga de:
-# 1. Obtener videos de una cuenta de TikTok
-# 2. Extraer comentarios de esos videos
-# 3. Analizar cada comentario con IA
-# 4. Devolver solo clientes con intención de compra
+# ✔ No rompe si falta API
+# ✔ Tiene fallback (datos simulados)
+# ✔ Código limpio y organizado
 # ============================================
 
 import requests
 import streamlit as st
 from ia_engine import analizar_comentario
 
-
 # ============================================
 # 🔐 CONFIGURACIÓN
 # ============================================
 
-# API KEY desde secrets
 RAPIDAPI_KEY = st.secrets.get("RAPIDAPI_KEY")
-
-def procesar_comentarios(usuario):
-
-    # Si no hay API → no rompe la app
-    if not RAPIDAPI_KEY:
-        return []
 
 HEADERS = {
     "X-RapidAPI-Key": RAPIDAPI_KEY,
     "X-RapidAPI-Host": "tiktok-scraper7.p.rapidapi.com"
-}
+} if RAPIDAPI_KEY else None
 
 
 # ============================================
-# 🎥 OBTENER VIDEOS DE UN USUARIO
+# 🎥 OBTENER VIDEOS
 # ============================================
 
 def obtener_videos(usuario):
     """
-    Obtiene los últimos videos de una cuenta de TikTok.
+    Obtiene los últimos videos del usuario.
+    Si no hay API → usa datos simulados.
     """
+
+    # 🔴 SIN API → MODO DEMO
+    if not HEADERS:
+        return [
+            {"play": "demo1"},
+            {"play": "demo2"},
+            {"play": "demo3"}
+        ]
 
     url = "https://tiktok-scraper7.p.rapidapi.com/user/posts"
 
@@ -47,15 +46,14 @@ def obtener_videos(usuario):
         response = requests.get(
             url,
             headers=HEADERS,
-            params={"username": usuario}
+            params={"username": usuario},
+            timeout=10
         )
 
         data = response.json()
-
-        # Extraemos lista de videos
         videos = data.get("data", {}).get("videos", [])
 
-        return videos[:3]  # SOLO los últimos 3 videos
+        return videos[:3]
 
     except Exception as e:
         print(f"Error obteniendo videos: {e}")
@@ -63,13 +61,23 @@ def obtener_videos(usuario):
 
 
 # ============================================
-# 💬 OBTENER COMENTARIOS DE UN VIDEO
+# 💬 OBTENER COMENTARIOS
 # ============================================
 
 def obtener_comentarios(video_url):
     """
-    Obtiene comentarios de un video específico.
+    Obtiene comentarios de un video.
+    Si no hay API → devuelve comentarios fake.
     """
+
+    # 🔴 SIN API → MODO DEMO
+    if not HEADERS:
+        return [
+            {"text": "Precio?", "user": {"unique_id": "cliente1"}},
+            {"text": "Me interesa", "user": {"unique_id": "cliente2"}},
+            {"text": "Cuánto cuesta?", "user": {"unique_id": "cliente3"}},
+            {"text": "Info por favor", "user": {"unique_id": "cliente4"}},
+        ]
 
     url = "https://tiktok-scraper7.p.rapidapi.com/video/comments"
 
@@ -77,14 +85,14 @@ def obtener_comentarios(video_url):
         response = requests.get(
             url,
             headers=HEADERS,
-            params={"url": video_url}
+            params={"url": video_url},
+            timeout=10
         )
 
         data = response.json()
-
         comentarios = data.get("data", {}).get("comments", [])
 
-        return comentarios[:20]  # limitamos a 20 comentarios
+        return comentarios[:20]
 
     except Exception as e:
         print(f"Error obteniendo comentarios: {e}")
@@ -92,39 +100,34 @@ def obtener_comentarios(video_url):
 
 
 # ============================================
-# 🧠 PROCESAR COMENTARIOS CON IA
+# 🧠 PROCESAR COMENTARIOS
 # ============================================
 
 def procesar_comentarios(usuario):
     """
-    Función principal:
-
-    - Busca videos
-    - Extrae comentarios
-    - Analiza con IA
-    - Devuelve leads listos
+    Flujo completo:
+    - obtiene videos
+    - obtiene comentarios
+    - analiza con IA
+    - devuelve leads reales
     """
 
     leads = []
 
-    # 1. Obtener videos del usuario
     videos = obtener_videos(usuario)
 
     if not videos:
         return []
 
-    # 2. Iterar cada video
     for video in videos:
 
-        video_url = video.get("play")  # URL del video
+        video_url = video.get("play")
 
         if not video_url:
             continue
 
-        # 3. Obtener comentarios del video
         comentarios = obtener_comentarios(video_url)
 
-        # 4. Analizar cada comentario
         for c in comentarios:
 
             texto = c.get("text")
@@ -133,21 +136,23 @@ def procesar_comentarios(usuario):
             if not texto:
                 continue
 
-            # 5. IA analiza el comentario
-            analisis = analizar_comentario(texto)
+            try:
+                analisis = analizar_comentario(texto)
+                score = analisis.get("score_ia", 0)
 
-            score = analisis.get("score_ia", 0)
+                # 🔥 FILTRO DE CLIENTES
+                if score >= 0.6:
+                    leads.append({
+                        "usuario": user or "anonimo",
+                        "comentario": texto,
+                        "score_ia": score,
+                        "intencion": analisis.get("intencion", ""),
+                        "producto_interes": analisis.get("producto_interes", "General"),
+                        "fuente": "TikTok"
+                    })
 
-            # 6. FILTRO (solo clientes reales)
-            if score >= 0.6:
-
-                leads.append({
-                    "usuario": user,
-                    "comentario": texto,
-                    "score_ia": score,
-                    "intencion": analisis.get("intencion"),
-                    "producto_interes": analisis.get("producto_interes"),
-                    "fuente": "TikTok"
-                })
+            except Exception as e:
+                print(f"Error IA: {e}")
+                continue
 
     return leads
