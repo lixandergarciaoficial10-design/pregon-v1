@@ -1,9 +1,7 @@
-apify-client
 streamlit
 pandas
-st-supabase-connection
 supabase
-instagrapi
-groq
 requests
+groq
 plotly
+apify-client
