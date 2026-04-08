@@ -20,8 +20,12 @@ from ia_engine import analizar_comentario
 # API KEY desde secrets
 RAPIDAPI_KEY = st.secrets.get("RAPIDAPI_KEY")
 
-if not RAPIDAPI_KEY:
-    print("⚠️ RAPIDAPI_KEY no configurada")
+def procesar_comentarios(usuario):
+
+    # Si no hay API → no rompe la app
+    if not RAPIDAPI_KEY:
+        return []
+
 HEADERS = {
     "X-RapidAPI-Key": RAPIDAPI_KEY,
     "X-RapidAPI-Host": "tiktok-scraper7.p.rapidapi.com"
