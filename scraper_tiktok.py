@@ -18,8 +18,10 @@ from ia_engine import analizar_comentario
 # ============================================
 
 # API KEY desde secrets
-RAPIDAPI_KEY = st.secrets["RAPIDAPI_KEY", None]
+RAPIDAPI_KEY = st.secrets.get("RAPIDAPI_KEY")
 
+if not RAPIDAPI_KEY:
+    print("⚠️ RAPIDAPI_KEY no configurada")
 HEADERS = {
     "X-RapidAPI-Key": RAPIDAPI_KEY,
     "X-RapidAPI-Host": "tiktok-scraper7.p.rapidapi.com"
