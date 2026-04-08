@@ -5,6 +5,8 @@
 import streamlit as st
 from database import guardar_leads, obtener_leads
 from scraper_tiktok.py import procesar_comentarios
+from analisis_competencia import analizar_competencia, generar_insight
+import plotly.express as px
 
 # ============================================
 # 🎨 CONFIGURACIÓN VISUAL
@@ -76,8 +78,7 @@ else:
 
     # SIDEBAR
     st.sidebar.title("🚀 PREGÓN AI")
-    menu = st.sidebar.radio("Menú", ["Dashboard", "Escanear"])
-
+    menu = st.sidebar.radio("Menú", ["Dashboard", "Escanear", "Análisis Competencia"])
     if st.sidebar.button("Cerrar sesión"):
         st.session_state.user_id = None
         st.rerun()
