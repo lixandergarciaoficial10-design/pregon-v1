@@ -1,14 +1,15 @@
 # ============================================
-# 📡 SCRAPER TIKTOK - PREGÓN AI (VERSIÓN SEGURA)
+# 📡 SCRAPER TIKTOK - PREGÓN AI (PRO COMPLETO)
 # ============================================
-# ✔ No rompe si falta API
-# ✔ Tiene fallback (datos simulados)
-# ✔ Código limpio y organizado
+# ✔ Funciona con API (RapidAPI)
+# ✔ Funciona sin API (modo demo)
+# ✔ No rompe la app nunca
+# ✔ Devuelve leads listos para guardar
 # ============================================
 
 import requests
 import streamlit as st
-from ia_engine import analizar_comentario
+from ia_engine import analizar_lead  # 👈 importante (nombre correcto)
 
 # ============================================
 # 🔐 CONFIGURACIÓN
@@ -28,35 +29,34 @@ HEADERS = {
 
 def obtener_videos(usuario):
     """
-    Obtiene los últimos videos del usuario.
-    Si no hay API → usa datos simulados.
+    Devuelve lista de videos del usuario
     """
 
-    # 🔴 SIN API → MODO DEMO
+    # 🔴 MODO DEMO (sin API)
     if not HEADERS:
         return [
-            {"play": "demo1"},
-            {"play": "demo2"},
-            {"play": "demo3"}
+            {"play": "demo_video_1"},
+            {"play": "demo_video_2"},
+            {"play": "demo_video_3"}
         ]
 
     url = "https://tiktok-scraper7.p.rapidapi.com/user/posts"
 
     try:
-        response = requests.get(
+        res = requests.get(
             url,
             headers=HEADERS,
             params={"username": usuario},
             timeout=10
         )
 
-        data = response.json()
+        data = res.json()
         videos = data.get("data", {}).get("videos", [])
 
         return videos[:3]
 
     except Exception as e:
-        print(f"Error obteniendo videos: {e}")
+        print("Error obteniendo videos:", e)
         return []
 
 
@@ -66,41 +66,41 @@ def obtener_videos(usuario):
 
 def obtener_comentarios(video_url):
     """
-    Obtiene comentarios de un video.
-    Si no hay API → devuelve comentarios fake.
+    Devuelve comentarios de un video
     """
 
-    # 🔴 SIN API → MODO DEMO
+    # 🔴 MODO DEMO (sin API)
     if not HEADERS:
         return [
             {"text": "Precio?", "user": {"unique_id": "cliente1"}},
-            {"text": "Me interesa", "user": {"unique_id": "cliente2"}},
-            {"text": "Cuánto cuesta?", "user": {"unique_id": "cliente3"}},
-            {"text": "Info por favor", "user": {"unique_id": "cliente4"}},
+            {"text": "Cuánto cuesta?", "user": {"unique_id": "cliente2"}},
+            {"text": "Me interesa", "user": {"unique_id": "cliente3"}},
+            {"text": "Info al DM", "user": {"unique_id": "cliente4"}},
+            {"text": "Tienen delivery?", "user": {"unique_id": "cliente5"}},
         ]
 
     url = "https://tiktok-scraper7.p.rapidapi.com/video/comments"
 
     try:
-        response = requests.get(
+        res = requests.get(
             url,
             headers=HEADERS,
             params={"url": video_url},
             timeout=10
         )
 
-        data = response.json()
+        data = res.json()
         comentarios = data.get("data", {}).get("comments", [])
 
         return comentarios[:20]
 
     except Exception as e:
-        print(f"Error obteniendo comentarios: {e}")
+        print("Error obteniendo comentarios:", e)
         return []
 
 
 # ============================================
-# 🧠 PROCESAR COMENTARIOS
+# 🧠 PROCESAR COMENTARIOS (FUNCIÓN PRINCIPAL)
 # ============================================
 
 def procesar_comentarios(usuario):
@@ -109,7 +109,7 @@ def procesar_comentarios(usuario):
     - obtiene videos
     - obtiene comentarios
     - analiza con IA
-    - devuelve leads reales
+    - devuelve leads filtrados
     """
 
     leads = []
@@ -137,10 +137,11 @@ def procesar_comentarios(usuario):
                 continue
 
             try:
-                analisis = analizar_comentario(texto)
+                analisis = analizar_lead(texto)
+
                 score = analisis.get("score_ia", 0)
 
-                # 🔥 FILTRO DE CLIENTES
+                # 🔥 FILTRO (clientes con intención)
                 if score >= 0.6:
                     leads.append({
                         "usuario": user or "anonimo",
@@ -152,7 +153,7 @@ def procesar_comentarios(usuario):
                     })
 
             except Exception as e:
-                print(f"Error IA: {e}")
+                print("Error IA:", e)
                 continue
 
     return leads
